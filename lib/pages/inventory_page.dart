@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../widgets/product_input_card.dart';
+import '../widgets/product_list_view.dart';
 
 class InventoryPage extends StatefulWidget {
   const InventoryPage({super.key});
@@ -44,100 +46,40 @@ class _InventoryPageState extends State<InventoryPage> {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            // Input form
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    TextField(
-                      controller: nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Product Name',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: quantityController,
-                      keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(
-                        labelText: 'Quantity',
-                        border: OutlineInputBorder(),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        onPressed: addProduct,
-                        icon: const Icon(Icons.add),
-                        label: const Text('Add Product'),
-                      ),
-                    ),
-                  ],
+      body: StreamBuilder<QuerySnapshot>(
+        stream: _collection.snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
+          final docs = snapshot.data?.docs ?? [];
+          final products = docs
+              .map((d) => {
+                    'id': d.id,
+                    'name': (d.data() as Map<String, dynamic>)['name']?.toString() ?? '',
+                    'quantity': (d.data() as Map<String, dynamic>)['quantity']?.toString() ?? '0',
+                  })
+              .toList();
+          return Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                ProductInputCard(
+                  nameController: nameController,
+                  quantityController: quantityController,
+                  onAdd: addProduct,
                 ),
-              ),
+                const SizedBox(height: 16),
+                Expanded(
+                  child: ProductListView(
+                    products: products,
+                    onRemove: (index) => removeProduct(docs[index].id),
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            // Product list
-            Expanded(
-              child: StreamBuilder<QuerySnapshot>(
-                stream: _collection.snapshots(),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-                  final docs = snapshot.data?.docs ?? [];
-                  if (docs.isEmpty) {
-                    return const Center(
-                      child: Text(
-                        'No products yet.\nAdd your first product above!',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: Colors.grey, fontSize: 16),
-                      ),
-                    );
-                  }
-                  return ListView.builder(
-                    itemCount: docs.length,
-                    itemBuilder: (context, index) {
-                      final data = docs[index].data() as Map<String, dynamic>;
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor:
-                                Theme.of(context).colorScheme.primaryContainer,
-                            child: Text(
-                              '${index + 1}',
-                              style: TextStyle(
-                                color: Theme.of(context).colorScheme.primary,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          title: Text(
-                            data['name'] ?? '',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          subtitle: Text('Quantity: ${data['quantity']}'),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.delete_outline, color: Colors.red),
-                            onPressed: () => removeProduct(docs[index].id),
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
