@@ -1,8 +1,9 @@
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/product_input_card.dart';
 import '../widgets/product_list_view.dart';
+import 'product_detail_screen.dart';
 
 class InventoryPage extends StatefulWidget {
   const InventoryPage({super.key});
@@ -12,75 +13,85 @@ class InventoryPage extends StatefulWidget {
 }
 
 class _InventoryPageState extends State<InventoryPage> {
-  final nameController = TextEditingController();
-  final quantityController = TextEditingController();
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController quantityController = TextEditingController();
+  final TextEditingController minStockLevelController = TextEditingController();
+
   final _collection = FirebaseFirestore.instance.collection('products');
+
+  @override
+  void dispose() {
+    nameController.dispose();
+    quantityController.dispose();
+    minStockLevelController.dispose();
+    super.dispose();
+  }
 
   Future<void> addProduct() async {
     final name = nameController.text.trim();
     final quantity = quantityController.text.trim();
+    final minStock = minStockLevelController.text.trim().isEmpty
+        ? '0'
+        : minStockLevelController.text.trim();
     if (name.isEmpty || quantity.isEmpty) return;
-    await _collection.add({'name': name, 'quantity': quantity});
+    await _collection.add({
+      'name': name,
+      'quantity': quantity,
+      'minStockLevel': minStock,
+    });
     nameController.clear();
     quantityController.clear();
-  }
-
-  Future<void> removeProduct(String docId) async {
-    await _collection.doc(docId).delete();
+    minStockLevelController.clear();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        title: const Text(
-          'Product Inventory',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        centerTitle: true,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.white),
-            onPressed: () => FirebaseAuth.instance.signOut(),
+    return StreamBuilder<QuerySnapshot>(
+      stream: _collection.snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final docs = snapshot.data?.docs ?? [];
+        final products = docs.map((d) {
+          final data = d.data() as Map<String, dynamic>;
+          return <String, dynamic>{
+            'id': d.id,
+            'name': data['name']?.toString() ?? '',
+            'quantity': data['quantity']?.toString() ?? '0',
+            'minStockLevel': data['minStockLevel']?.toString() ?? '0',
+          };
+        }).toList();
+
+        return Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              ProductInputCard(
+                nameController: nameController,
+                quantityController: quantityController,
+                minStockLevelController: minStockLevelController,
+                onAdd: addProduct,
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: ProductListView(
+                  products: products,
+                  onTap: (product) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ProductDetailScreen(product: product),
+                      ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
-      body: StreamBuilder<QuerySnapshot>(
-        stream: _collection.snapshots(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          final docs = snapshot.data?.docs ?? [];
-          final products = docs
-              .map((d) => {
-                    'id': d.id,
-                    'name': (d.data() as Map<String, dynamic>)['name']?.toString() ?? '',
-                    'quantity': (d.data() as Map<String, dynamic>)['quantity']?.toString() ?? '0',
-                  })
-              .toList();
-          return Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              children: [
-                ProductInputCard(
-                  nameController: nameController,
-                  quantityController: quantityController,
-                  onAdd: addProduct,
-                ),
-                const SizedBox(height: 16),
-                Expanded(
-                  child: ProductListView(
-                    products: products,
-                    onRemove: (index) => removeProduct(docs[index].id),
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
+        );
+      },
     );
   }
 }

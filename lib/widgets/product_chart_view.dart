@@ -1,8 +1,9 @@
+
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 class ProductChartView extends StatelessWidget {
-  final List<Map<String, String>> products;
+  final List<Map<String, dynamic>> products;
   final List<BarChartGroupData> barGroups;
 
   const ProductChartView({
@@ -30,7 +31,7 @@ class ProductChartView extends StatelessWidget {
     }
 
     double maxQty = products
-        .map((p) => double.tryParse(p['quantity'] ?? '0') ?? 0)
+        .map((p) => double.tryParse(p['quantity']?.toString() ?? '0') ?? 0)
         .reduce((a, b) => a > b ? a : b);
 
     return Column(
@@ -55,7 +56,7 @@ class ProductChartView extends StatelessWidget {
                     getTitlesWidget: (value, meta) {
                       int index = value.toInt();
                       if (index >= products.length) return const SizedBox();
-                      String name = products[index]['name']!;
+                      String name = products[index]['name']?.toString() ?? '';
                       if (name.length > 8) name = '${name.substring(0, 7)}..';
                       return Padding(
                         padding: const EdgeInsets.only(top: 8),
