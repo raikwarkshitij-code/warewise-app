@@ -21,25 +21,13 @@ class DefaultFirebaseOptions {
     }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for android - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return android;
       case TargetPlatform.iOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for ios - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return ios;
       case TargetPlatform.macOS:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for macos - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return macos;
       case TargetPlatform.windows:
-        throw UnsupportedError(
-          'DefaultFirebaseOptions have not been configured for windows - '
-          'you can reconfigure this by running the FlutterFire CLI again.',
-        );
+        return windows;
       case TargetPlatform.linux:
         throw UnsupportedError(
           'DefaultFirebaseOptions have not been configured for linux - '
@@ -53,11 +41,49 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyBDW166EjU4rIHJRzCHg4v7TQjMnl-5Ccc',
-    appId: '1:606963412513:web:118eff7b607a96a23b3d60',
-    messagingSenderId: '606963412513',
-    projectId: 'supply-inventory-1e5e2',
-    authDomain: 'supply-inventory-1e5e2.firebaseapp.com',
-    storageBucket: 'supply-inventory-1e5e2.firebasestorage.app',
+    apiKey: 'AIzaSyCJmtncAyeRvqYKZP0CpfWMfScFwiA1QZQ',
+    appId: '1:330997345510:web:1cc7d973ef2e2389059f27',
+    messagingSenderId: '330997345510',
+    projectId: 'mwis-inventory',
+    authDomain: 'mwis-inventory.firebaseapp.com',
+    storageBucket: 'mwis-inventory.firebasestorage.app',
+    measurementId: 'G-3KSDMTDQ8V',
   );
+
+  static const FirebaseOptions macos = FirebaseOptions(
+    apiKey: 'AIzaSyDXaJnTv8CDOO556ZobOxqwS3hIbKzWMFQ',
+    appId: '1:330997345510:ios:1fe37ed3ffefc2c8059f27',
+    messagingSenderId: '330997345510',
+    projectId: 'mwis-inventory',
+    storageBucket: 'mwis-inventory.firebasestorage.app',
+    iosBundleId: 'com.example.myApp',
+  );
+
+  static const FirebaseOptions ios = FirebaseOptions(
+    apiKey: 'AIzaSyDXaJnTv8CDOO556ZobOxqwS3hIbKzWMFQ',
+    appId: '1:330997345510:ios:1fe37ed3ffefc2c8059f27',
+    messagingSenderId: '330997345510',
+    projectId: 'mwis-inventory',
+    storageBucket: 'mwis-inventory.firebasestorage.app',
+    iosBundleId: 'com.example.myApp',
+  );
+
+  static const FirebaseOptions android = FirebaseOptions(
+    apiKey: 'AIzaSyCLTiketKq_in7Efyf7yp_F-Gbwdhdl1RY',
+    appId: '1:330997345510:android:a09f881ebbff680c059f27',
+    messagingSenderId: '330997345510',
+    projectId: 'mwis-inventory',
+    storageBucket: 'mwis-inventory.firebasestorage.app',
+  );
+
+  static const FirebaseOptions windows = FirebaseOptions(
+    apiKey: 'AIzaSyCJmtncAyeRvqYKZP0CpfWMfScFwiA1QZQ',
+    appId: '1:330997345510:web:3aced7240ed60069059f27',
+    messagingSenderId: '330997345510',
+    projectId: 'mwis-inventory',
+    authDomain: 'mwis-inventory.firebaseapp.com',
+    storageBucket: 'mwis-inventory.firebasestorage.app',
+    measurementId: 'G-916SRYRFV8',
+  );
+
 }

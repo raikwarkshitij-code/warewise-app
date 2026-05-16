@@ -1,9 +1,10 @@
-
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dashboard_page.dart';
 import 'inventory_page.dart';
-import 'suppliers_page.dart';
+import 'profile_page.dart';
+import 'alerts_page.dart';
+import 'operations_page.dart'; // 1. Updated Import
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
@@ -13,38 +14,43 @@ class MainShell extends StatefulWidget {
 }
 
 class _MainShellState extends State<MainShell> {
-  int _currentIndex = 1;
+  int _currentIndex = 0; 
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final email = user?.email ?? '';
+    final initial = email.isNotEmpty ? email[0].toUpperCase() : 'S';
+
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.primary,
-        leading: Padding(
-          padding: const EdgeInsets.all(10.0),
-          child: CircleAvatar(
-            backgroundColor: Colors.blue.shade700,
-            child: const Text(
-              'S',
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
+        leading: GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const ProfilePage()),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(10.0),
+            child: CircleAvatar(
+              backgroundColor: Colors.blue.shade700,
+              child: Text(
+                initial,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
+                ),
               ),
             ),
           ),
         ),
         title: const Text(
-          'StockFlow',
+          'Amazon MWIS',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.white),
-            tooltip: 'Sign out',
-            onPressed: () => FirebaseAuth.instance.signOut(),
-          ),
-        ],
       ),
       body: _buildPage(_currentIndex),
       bottomNavigationBar: NavigationBar(
@@ -62,14 +68,15 @@ class _MainShellState extends State<MainShell> {
             label: 'Products',
           ),
           NavigationDestination(
-            icon: Icon(Icons.factory_outlined),
-            selectedIcon: Icon(Icons.factory),
-            label: 'Suppliers',
-          ),
-          NavigationDestination(
             icon: Icon(Icons.notifications_outlined),
             selectedIcon: Icon(Icons.notifications),
             label: 'Alerts',
+          ),
+          // 2. Updated Navigation Item Label
+          NavigationDestination(
+            icon: Icon(Icons.local_shipping_outlined),
+            selectedIcon: Icon(Icons.local_shipping),
+            label: 'Logistics',
           ),
         ],
       ),
@@ -83,39 +90,11 @@ class _MainShellState extends State<MainShell> {
       case 1:
         return const InventoryPage();
       case 2:
-        return const SuppliersPage();
+        return const AlertsPage(); 
       case 3:
-        return const _PlaceholderPage(
-          icon: Icons.notifications,
-          message: 'Alerts — Coming in Session 7',
-        );
+        return const OperationsPage(); // 3. Updated Class Link
       default:
-        return const InventoryPage();
+        return const DashboardPage();
     }
-  }
-}
-
-class _PlaceholderPage extends StatelessWidget {
-  final IconData icon;
-  final String message;
-
-  const _PlaceholderPage({required this.icon, required this.message});
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, size: 64, color: Colors.grey),
-          const SizedBox(height: 16),
-          Text(
-            message,
-            style: const TextStyle(fontSize: 18, color: Colors.grey),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
   }
 }

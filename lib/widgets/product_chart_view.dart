@@ -1,52 +1,64 @@
-
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 class ProductChartView extends StatelessWidget {
-  final List<Map<String, dynamic>> products;
-  final List<BarChartGroupData> barGroups;
+  final String productName;
+  final Map<String, int> cityData;
 
   const ProductChartView({
     super.key,
-    required this.products,
-    required this.barGroups,
+    required this.productName,
+    required this.cityData,
   });
+
+  List<BarChartGroupData> _buildBarGroups() {
+    return cityData.entries.toList().asMap().entries.map((entry) {
+      final index = entry.key;
+      final qty = entry.value.value.toDouble();
+      
+      // Determine bar color based on stock health
+      Color barColor = Colors.blue.shade400;
+      if (qty == 0) barColor = Colors.red.shade400;
+      else if (qty < 10) barColor = Colors.orange.shade400; // Simulated threshold
+      else barColor = Colors.green.shade400;
+
+      return BarChartGroupData(
+        x: index,
+        barRods: [
+          BarChartRodData(
+            toY: qty,
+            color: barColor,
+            width: 28,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(6)),
+          ),
+        ],
+      );
+    }).toList();
+  }
 
   @override
   Widget build(BuildContext context) {
-    if (products.isEmpty) {
+    if (cityData.isEmpty) {
       return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.bar_chart, size: 64, color: Colors.grey),
-            SizedBox(height: 12),
-            Text(
-              'Add products to see the chart!',
-              style: TextStyle(color: Colors.grey, fontSize: 16),
-            ),
-          ],
-        ),
+        child: Text('No city data available for this product.', style: TextStyle(color: Colors.grey)),
       );
     }
 
-    double maxQty = products
-        .map((p) => double.tryParse(p['quantity']?.toString() ?? '0') ?? 0)
-        .reduce((a, b) => a > b ? a : b);
+    double maxQty = cityData.values.fold(0, (prev, amount) => amount > prev ? amount : prev).toDouble();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Stock Levels by Product',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        Text(
+          'Live Node Telemetry: $productName',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 24),
         Expanded(
           child: BarChart(
             BarChartData(
-              maxY: maxQty + 5,
-              barGroups: barGroups,
+              maxY: maxQty + 10,
+              barGroups: _buildBarGroups(),
               borderData: FlBorderData(show: false),
               gridData: const FlGridData(show: true),
               titlesData: FlTitlesData(
@@ -55,12 +67,11 @@ class ProductChartView extends StatelessWidget {
                     showTitles: true,
                     getTitlesWidget: (value, meta) {
                       int index = value.toInt();
-                      if (index >= products.length) return const SizedBox();
-                      String name = products[index]['name']?.toString() ?? '';
-                      if (name.length > 8) name = '${name.substring(0, 7)}..';
+                      final cities = cityData.keys.toList();
+                      if (index >= cities.length) return const SizedBox();
                       return Padding(
                         padding: const EdgeInsets.only(top: 8),
-                        child: Text(name, style: const TextStyle(fontSize: 11)),
+                        child: Text(cities[index], style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                       );
                     },
                     reservedSize: 36,
@@ -82,13 +93,6 @@ class ProductChartView extends StatelessWidget {
                 rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
               ),
             ),
-          ),
-        ),
-        const SizedBox(height: 8),
-        const Center(
-          child: Text(
-            'Each bar = quantity of one product',
-            style: TextStyle(color: Colors.grey, fontSize: 13),
           ),
         ),
       ],

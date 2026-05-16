@@ -4,14 +4,18 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'pages/main_shell.dart';
 import 'pages/auth_page.dart';
+import 'pages/alerts_page.dart';
 
 void main() async {
+  // ADD THIS LINE BELOW:
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
   runApp(const MyApp());
 }
+ 
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
