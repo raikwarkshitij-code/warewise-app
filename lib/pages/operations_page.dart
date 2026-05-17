@@ -18,6 +18,85 @@ class _OperationsPageState extends State<OperationsPage> {
     super.dispose();
   }
 
+  void _showEditQuantityDialog(
+      BuildContext context, String docId, int currentQty) {
+    final qtyController = TextEditingController(text: currentQty.toString());
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.edit_note, color: Colors.blue),
+            SizedBox(width: 8),
+            Text('Modify Batch Quantity'),
+          ],
+        ),
+        content: TextField(
+          controller: qtyController,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(
+            labelText: 'New Allocation Count',
+            border: OutlineInputBorder(),
+            suffixText: 'Units',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue.shade700,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () async {
+              final parsedQty = int.tryParse(qtyController.text);
+              if (parsedQty == null || parsedQty <= 0) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                      content: Text('Please enter a valid positive quantity')),
+                );
+                return;
+              }
+
+              try {
+                await FirebaseFirestore.instance
+                    .collection('transfers')
+                    .doc(docId)
+                    .update({'volume': parsedQty});
+
+                if (ctx.mounted) Navigator.pop(ctx);
+
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Batch allocation adjusted successfully!'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                        content: Text('Error modifying record: $e'),
+                        backgroundColor: Colors.red),
+                  );
+                }
+              }
+            },
+            child: const Text('Save Changes'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Map<String, String> _calculateLaneMetrics(String from, String to) {
     final String path = '${from}_$to';
     switch (path) {
@@ -178,11 +257,13 @@ class _OperationsPageState extends State<OperationsPage> {
                     .collection('transfers')
                     .snapshots(),
                 builder: (context, snapshot) {
-                  if (snapshot.hasError)
+                  if (snapshot.hasError) {
                     return Center(
                         child: Text('Pipeline error: ${snapshot.error}'));
-                  if (snapshot.connectionState == ConnectionState.waiting)
+                  }
+                  if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
+                  }
 
                   final allDocs = snapshot.data?.docs ?? [];
                   List<QueryDocumentSnapshot> sortedDocs = allDocs.toList()
@@ -233,6 +314,10 @@ class _OperationsPageState extends State<OperationsPage> {
                       final String origin = currentOrder['from'] ?? 'Unknown';
                       final String dest = currentOrder['to'] ?? 'Unknown';
                       final laneMetrics = _calculateLaneMetrics(origin, dest);
+
+                      final int volumeInt = int.tryParse(
+                              currentOrder['volume']?.toString() ?? '0') ??
+                          0;
 
                       final double procCost = double.tryParse(
                               currentOrder['procurementCost']?.toString() ??
@@ -303,11 +388,31 @@ class _OperationsPageState extends State<OperationsPage> {
                                 style: const TextStyle(
                                     fontWeight: FontWeight.w600,
                                     color: Colors.black54)),
-                            Text('Batch Qty: ${currentOrder['volume']} Units',
-                                style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.blue,
-                                    fontSize: 14)),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text('Batch Qty: $volumeInt Units',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.blue,
+                                        fontSize: 14)),
+                                // FIXED: The edit action is now explicitly isolated to "Pending Approval" manifests
+                                if (isPending) ...[
+                                  const SizedBox(width: 4),
+                                  IconButton(
+                                    icon: const Icon(Icons.edit, size: 14),
+                                    color: Colors.blue.shade700,
+                                    tooltip: 'Modify Manifest Volume',
+                                    constraints: const BoxConstraints(),
+                                    padding: const EdgeInsets.all(4),
+                                    onPressed: () {
+                                      _showEditQuantityDialog(
+                                          context, orderId, volumeInt);
+                                    },
+                                  ),
+                                ],
+                              ],
+                            ),
                             Text('Destination: $dest',
                                 style: const TextStyle(
                                     fontWeight: FontWeight.w600,
@@ -674,10 +779,11 @@ class _OperationsPageState extends State<OperationsPage> {
       BuildContext context, DocumentReference docRef) async {
     try {
       docRef.delete();
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text('Transfer manifest rejected and removed.'),
             backgroundColor: Colors.red));
+      }
     } catch (e) {
       print(e);
     }
@@ -699,16 +805,18 @@ class _OperationsPageState extends State<OperationsPage> {
       }, SetOptions(merge: true));
       transferRef.update({'status': 'In Transit'});
 
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text(
                 'Shipment authorized! Manifest progress set to Transfer Initiated.'),
             backgroundColor: Colors.green));
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text('Authorization Failed: ${e.toString()}'),
             backgroundColor: Colors.red));
+      }
     }
   }
 
@@ -728,16 +836,18 @@ class _OperationsPageState extends State<OperationsPage> {
       }, SetOptions(merge: true));
       transferRef.update({'status': 'Delivered'});
 
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
             content: Text(
                 'Stock received on dock! Quantities updated successfully.'),
             backgroundColor: Colors.green));
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(
             content: Text('Receipt Failed: ${e.toString()}'),
             backgroundColor: Colors.red));
+      }
     }
   }
 }
