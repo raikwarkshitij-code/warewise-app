@@ -1,184 +1,213 @@
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'edit_product_screen.dart';
+import '../widgets/stat_card.dart';
+import '../widgets/city_stock_chart_view.dart';
 
-class ProductDetailScreen extends StatelessWidget {
+class ProductDetailScreen extends StatefulWidget {
   final Map<String, dynamic> product;
 
   const ProductDetailScreen({super.key, required this.product});
 
-  Widget _buildStatusBadge() {
-    final quantity =
-        int.tryParse(product['quantity']?.toString() ?? '0') ?? 0;
-    final minStock =
-        int.tryParse(product['minStockLevel']?.toString() ?? '0') ?? 0;
-
-    Color bgColor;
-    String label;
-
-    if (quantity == 0) {
-      bgColor = Colors.red;
-      label = 'Out of Stock';
-    } else if (quantity <= minStock) {
-      bgColor = Colors.orange;
-      label = 'Low Stock';
-    } else {
-      bgColor = Colors.green;
-      label = 'In Stock';
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-      ),
-    );
-  }
-
-  void _showDeleteDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text('Delete Product'),
-        content: const Text('Are you sure you want to delete this product?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          TextButton(
-            style: TextButton.styleFrom(foregroundColor: Colors.red),
-            onPressed: () async {
-              Navigator.pop(dialogContext);
-              await FirebaseFirestore.instance
-                  .collection('products')
-                  .doc(product['id'])
-                  .delete();
-              if (context.mounted) Navigator.pop(context);
-            },
-            child: const Text('Delete'),
-          ),
-        ],
-      ),
-    );
-  }
-
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        iconTheme: const IconThemeData(color: Colors.white),
-        title: Text(
-          product['name']?.toString() ?? 'Product',
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.edit, color: Colors.white),
-            tooltip: 'Edit product',
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => EditProductScreen(product: product),
-                ),
-              );
-            },
-          ),
-        ],
-      ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _InfoRow(
-              icon: Icons.inventory_2,
-              label: 'Quantity',
-              value: product['quantity']?.toString() ?? '0',
-            ),
-            const SizedBox(height: 12),
-            _InfoRow(
-              icon: Icons.warning_amber,
-              label: 'Minimum Stock Level',
-              value: product['minStockLevel']?.toString() ?? '0',
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                const Icon(Icons.circle, color: Colors.grey, size: 24),
-                const SizedBox(width: 12),
-                const Text(
-                  'Status',
-                  style: TextStyle(fontSize: 16, color: Colors.grey),
-                ),
-                const Spacer(),
-                _buildStatusBadge(),
-              ],
-            ),
-            const SizedBox(height: 24),
-            const Divider(),
-            const SizedBox(height: 16),
-            const Text(
-              'Danger Zone',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Colors.red,
-              ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: OutlinedButton.icon(
-                icon: const Icon(Icons.delete_forever, color: Colors.red),
-                label: const Text(
-                  'Delete Product',
-                  style: TextStyle(color: Colors.red, fontSize: 16),
-                ),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: Colors.red),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                ),
-                onPressed: () => _showDeleteDialog(context),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  State<ProductDetailScreen> createState() => _ProductDetailScreenState();
 }
 
-class _InfoRow extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final String value;
+class _ProductDetailScreenState extends State<ProductDetailScreen> {
+  bool _isSuccess =
+      false; // Internal state flag to manage immediate onscreen feedback
 
-  const _InfoRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
+  double _getTransferCost(String from, String to) {
+    final lane = '${from}_$to';
+    if (lane.contains('Berlin') && lane.contains('Hamburg')) return 145.50;
+    if (lane.contains('Berlin') && lane.contains('Munich')) return 292.50;
+    if (lane.contains('Hamburg') && lane.contains('Munich')) return 396.00;
+    return 200.00;
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, color: Colors.grey),
-        const SizedBox(width: 12),
-        Text(label, style: const TextStyle(fontSize: 16, color: Colors.grey)),
-        const Spacer(),
-        Text(value,
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-      ],
+    final productName = widget.product['name']?.toString() ?? 'Unknown Product';
+    final String productId = widget.product['id']?.toString() ?? 'unknown_id';
+    final int qty =
+        int.tryParse(widget.product['quantity']?.toString() ?? '0') ?? 0;
+    final int minStock =
+        int.tryParse(widget.product['minStockLevel']?.toString() ?? '0') ?? 0;
+
+    final double retailPrice =
+        double.tryParse(widget.product['price']?.toString() ?? '0.0') ?? 0.0;
+    final double unitCogs = retailPrice * 0.60;
+
+    final Map<String, dynamic> cityStock =
+        Map<String, dynamic>.from(widget.product['cityStock'] ?? {});
+
+    final int berlin =
+        int.tryParse(cityStock['Berlin']?.toString() ?? '0') ?? 0;
+    final int hamburg =
+        int.tryParse(cityStock['Hamburg']?.toString() ?? '0') ?? 0;
+    final int munich =
+        int.tryParse(cityStock['Munich']?.toString() ?? '0') ?? 0;
+
+    List<MapEntry<String, int>> hubs = [
+      MapEntry('Berlin', berlin),
+      MapEntry('Hamburg', hamburg),
+      MapEntry('Munich', munich),
+    ];
+    hubs.sort((a, b) => a.value.compareTo(b.value));
+
+    String depletedHub = hubs.first.key;
+    String surplusHub = hubs.last.key;
+
+    final double procurementCost = unitCogs * 100;
+    final double transferCost = _getTransferCost(surplusHub, depletedHub);
+    final double netSavings = procurementCost - transferCost;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Product Telemetry', style: TextStyle(fontSize: 18)),
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Colors.white,
+      ),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(productName,
+                  style: const TextStyle(
+                      fontSize: 22, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 16),
+
+              Row(
+                children: [
+                  Expanded(
+                      child: StatCard(
+                          icon: Icons.inventory_2,
+                          label: 'Global Stock',
+                          value: '$qty',
+                          color: Colors.blue)),
+                  const SizedBox(width: 12),
+                  Expanded(
+                      child: StatCard(
+                          icon: Icons.warning_amber,
+                          label: 'Min Threshold',
+                          value: '$minStock',
+                          color: qty <= minStock
+                              ? Colors.red
+                              : Colors.grey.shade700)),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              const Text('Stock Distribution by City',
+                  style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey)),
+              const SizedBox(height: 12),
+
+              SizedBox(
+                height: 260,
+                child: CityStockChartView(
+                    productName: productName, cityData: cityStock),
+              ),
+              const SizedBox(height: 32),
+
+              // DYNAMIC ONSCREEN MESSAGE COMPONENT
+              if (_isSuccess)
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade50,
+                    borderRadius: BorderRadius.circular(12),
+                    border:
+                        Border.all(color: Colors.green.shade300, width: 1.5),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.check_circle,
+                          color: Colors.green.shade700, size: 24),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          'Transfer Initiated Successfully!',
+                          style: TextStyle(
+                              color: Colors.green.shade900,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _isSuccess
+                        ? Colors.grey.shade400
+                        : Theme.of(context).colorScheme.primary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: _isSuccess
+                      ? null
+                      : () async {
+                          try {
+                            // Dispatches data straight to Firestore tracking collection
+                            FirebaseFirestore.instance
+                                .collection('transfers')
+                                .add({
+                              'productId': productId,
+                              'productName': productName,
+                              'from': surplusHub,
+                              'to': depletedHub,
+                              'volume': 100,
+                              'status': 'Pending Approval',
+                              'procurementCost': procurementCost,
+                              'transferCost': transferCost,
+                              'netSavings': netSavings,
+                              'createdAt': FieldValue.serverTimestamp(),
+                            });
+
+                            // Trigger localized UI state shift instantly
+                            setState(() {
+                              _isSuccess = true;
+                            });
+
+                            // Pause briefly so user can view the feedback banner, then snap back
+                            await Future.delayed(
+                                const Duration(milliseconds: 1500));
+                            if (mounted) {
+                              Navigator.pop(context, 'route_to_logistics');
+                            }
+                          } catch (e) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                  content: Text('Error: $e'),
+                                  backgroundColor: Colors.red),
+                            );
+                          }
+                        },
+                  icon: Icon(_isSuccess ? Icons.done : Icons.send),
+                  label: Text(
+                      _isSuccess
+                          ? 'Transfer Request Dispatched'
+                          : 'Request Transfer',
+                      style: const TextStyle(
+                          fontSize: 15, fontWeight: FontWeight.bold)),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

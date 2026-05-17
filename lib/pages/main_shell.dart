@@ -1,20 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dashboard_page.dart';
-import 'inventory_page.dart';
-import 'profile_page.dart';
 import 'alerts_page.dart';
-import 'operations_page.dart'; // 1. Updated Import
+import 'operations_page.dart';
+import 'finance_page.dart';
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
+
+  static void switchToTab(BuildContext context, int index) {
+    final state = context.findAncestorStateOfType<_MainShellState>();
+    if (state != null) {
+      state.setTabIndex(index);
+    }
+  }
 
   @override
   State<MainShell> createState() => _MainShellState();
 }
 
 class _MainShellState extends State<MainShell> {
-  int _currentIndex = 0; 
+  int _currentIndex = 0;
+
+  void setTabIndex(int index) {
+    setState(() => _currentIndex = index);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,25 +35,16 @@ class _MainShellState extends State<MainShell> {
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.primary,
-        leading: GestureDetector(
-          onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const ProfilePage()),
-            );
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(10.0),
-            child: CircleAvatar(
-              backgroundColor: Colors.blue.shade700,
-              child: Text(
-                initial,
-                style: const TextStyle(
+        leading: Padding(
+          padding: const EdgeInsets.all(10.0),
+          child: CircleAvatar(
+            backgroundColor: Colors.blue.shade700,
+            child: Text(
+              initial,
+              style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,
-                  fontSize: 16,
-                ),
-              ),
+                  fontSize: 16),
             ),
           ),
         ),
@@ -51,6 +52,53 @@ class _MainShellState extends State<MainShell> {
           'Amazon MWIS',
           style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.white),
+            tooltip: 'Sign Out of Account',
+            onPressed: () async {
+              bool confirmLogout = await showDialog(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: const Text('Sign Out'),
+                      content: const Text(
+                          'Are you sure you want to log out of the MWIS interface?'),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('Cancel'),
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red,
+                            foregroundColor: Colors.white,
+                          ),
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('Logout'),
+                        ),
+                      ],
+                    ),
+                  ) ??
+                  false;
+
+              if (!confirmLogout) return;
+
+              try {
+                // Terminate session cleanly without fighting the root navigator stream
+                await FirebaseAuth.instance.signOut();
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                        content: Text('Sign out error: $e'),
+                        backgroundColor: Colors.red),
+                  );
+                }
+              }
+            },
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
       body: _buildPage(_currentIndex),
       bottomNavigationBar: NavigationBar(
@@ -63,20 +111,19 @@ class _MainShellState extends State<MainShell> {
             label: 'Dashboard',
           ),
           NavigationDestination(
-            icon: Icon(Icons.inventory_2_outlined),
-            selectedIcon: Icon(Icons.inventory_2),
-            label: 'Products',
-          ),
-          NavigationDestination(
             icon: Icon(Icons.notifications_outlined),
             selectedIcon: Icon(Icons.notifications),
             label: 'Alerts',
           ),
-          // 2. Updated Navigation Item Label
           NavigationDestination(
             icon: Icon(Icons.local_shipping_outlined),
             selectedIcon: Icon(Icons.local_shipping),
             label: 'Logistics',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.account_balance_wallet_outlined),
+            selectedIcon: Icon(Icons.account_balance_wallet),
+            label: 'Finance',
           ),
         ],
       ),
@@ -88,11 +135,11 @@ class _MainShellState extends State<MainShell> {
       case 0:
         return const DashboardPage();
       case 1:
-        return const InventoryPage();
+        return const AlertsPage();
       case 2:
-        return const AlertsPage(); 
+        return OperationsPage();
       case 3:
-        return const OperationsPage(); // 3. Updated Class Link
+        return FinancePage();
       default:
         return const DashboardPage();
     }

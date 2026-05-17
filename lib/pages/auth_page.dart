@@ -34,6 +34,8 @@ class _AuthPageState extends State<AuthPage> {
       }
     } on FirebaseAuthException catch (e) {
       setState(() => errorMessage = e.message);
+    } catch (e) {
+      setState(() => errorMessage = e.toString());
     } finally {
       setState(() => isLoading = false);
     }
@@ -55,11 +57,13 @@ class _AuthPageState extends State<AuthPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.lock_rounded, size: 64, color: Colors.indigo.shade400),
+                  Icon(Icons.lock_rounded,
+                      size: 64, color: Colors.indigo.shade400),
                   const SizedBox(height: 12),
                   Text(
                     isLogin ? 'Sign In' : 'Create Account',
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                    style: const TextStyle(
+                        fontSize: 24, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 24),
                   TextField(
@@ -80,11 +84,14 @@ class _AuthPageState extends State<AuthPage> {
                   ),
                   const SizedBox(height: 12),
                   if (errorMessage != null)
-                    Text(
-                      errorMessage!,
-                      style: const TextStyle(color: Colors.red),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 12.0),
+                      child: Text(
+                        errorMessage!,
+                        style: const TextStyle(color: Colors.red),
+                        textAlign: TextAlign.center,
+                      ),
                     ),
-                  const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
                     height: 48,

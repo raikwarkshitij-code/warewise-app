@@ -85,5 +85,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'mwis-inventory.firebasestorage.app',
     measurementId: 'G-916SRYRFV8',
   );
-
 }
