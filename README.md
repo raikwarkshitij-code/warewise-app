@@ -3548,4 +3548,5 @@ RECOMMENDED FOR YOUR CLASS
 Tell your students:
 macOS students — use the iOS Simulator. It's faster and easier than Android on Mac.
 Windows students — use the Android Emulator. Make sure they enable Hypervisor Platform in Windows Features first.
-Everyone — if the emulator is too slow on their laptop, use flutter run -d chrome as a backup. It always works on any machine.
+Everyone — if the emulator is too slow on their laptop, use flutter run -d chrome as a backup. It always works on any machine.#   A S - M W I S A P P  
+ 
