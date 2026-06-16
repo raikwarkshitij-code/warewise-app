@@ -1,19 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'dashboard_page.dart';
-import 'alerts_page.dart';
 import 'operations_page.dart';
-import 'finance_page.dart';
+import 'inventory_page.dart'; // FIXED: Importing your new clean file layout
 
 class MainShell extends StatefulWidget {
   const MainShell({super.key});
-
-  static void switchToTab(BuildContext context, int index) {
-    final state = context.findAncestorStateOfType<_MainShellState>();
-    if (state != null) {
-      state.setTabIndex(index);
-    }
-  }
 
   @override
   State<MainShell> createState() => _MainShellState();
@@ -21,127 +12,72 @@ class MainShell extends StatefulWidget {
 
 class _MainShellState extends State<MainShell> {
   int _currentIndex = 0;
+  
+  late final List<Widget> _pages;
 
-  void setTabIndex(int index) {
-    setState(() => _currentIndex = index);
+  @override
+  void initState() {
+    super.initState();
+    _pages = [
+      const DashboardPage(), 
+      const Scaffold(body: Center(child: Text('AI Assistant Workspace'))), 
+      const OperationsPage(),
+      const InventoryPage(), // FIXED: Properly bound to your real dynamic dashboard feed screen
+    ];
   }
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    final email = user?.email ?? '';
-    final initial = email.isNotEmpty ? email[0].toUpperCase() : 'S';
+    final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        leading: Padding(
-          padding: const EdgeInsets.all(10.0),
-          child: CircleAvatar(
-            backgroundColor: Colors.blue.shade700,
-            child: Text(
-              initial,
-              style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 16),
-            ),
-          ),
-        ),
-        title: const Text(
-          'Amazon MWIS',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout, color: Colors.white),
-            tooltip: 'Sign Out of Account',
-            onPressed: () async {
-              bool confirmLogout = await showDialog(
-                    context: context,
-                    builder: (ctx) => AlertDialog(
-                      title: const Text('Sign Out'),
-                      content: const Text(
-                          'Are you sure you want to log out of the MWIS interface?'),
-                      actions: [
-                        TextButton(
-                          onPressed: () => Navigator.pop(ctx, false),
-                          child: const Text('Cancel'),
-                        ),
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.red,
-                            foregroundColor: Colors.white,
-                          ),
-                          onPressed: () => Navigator.pop(ctx, true),
-                          child: const Text('Logout'),
-                        ),
-                      ],
-                    ),
-                  ) ??
-                  false;
-
-              if (!confirmLogout) return;
-
-              try {
-                // Terminate session cleanly without fighting the root navigator stream
-                await FirebaseAuth.instance.signOut();
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content: Text('Sign out error: $e'),
-                        backgroundColor: Colors.red),
-                  );
-                }
-              }
-            },
-          ),
-          const SizedBox(width: 8),
-        ],
+      body: IndexedStack(
+        index: _currentIndex,
+        children: _pages,
       ),
-      body: _buildPage(_currentIndex),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) => setState(() => _currentIndex = index),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.dashboard_outlined),
-            selectedIcon: Icon(Icons.dashboard),
-            label: 'Dashboard',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.notifications_outlined),
-            selectedIcon: Icon(Icons.notifications),
-            label: 'Alerts',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.local_shipping_outlined),
-            selectedIcon: Icon(Icons.local_shipping),
-            label: 'Logistics',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.account_balance_wallet_outlined),
-            selectedIcon: Icon(Icons.account_balance_wallet),
-            label: 'Finance',
-          ),
-        ],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.06),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          onTap: (index) => setState(() => _currentIndex = index),
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.white,
+          selectedItemColor: theme.colorScheme.primary,
+          unselectedItemColor: const Color(0xFF94A3B8),
+          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+          unselectedLabelStyle: const TextStyle(fontSize: 11),
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.dashboard_outlined),
+              activeIcon: Icon(Icons.dashboard_rounded),
+              label: 'Hub',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.bolt_outlined),
+              activeIcon: Icon(Icons.bolt_rounded),
+              label: 'Wise AI',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.swap_horizontal_circle_outlined),
+              activeIcon: Icon(Icons.swap_horizontal_circle_rounded),
+              label: 'Ops',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.inventory_2_outlined),
+              activeIcon: Icon(Icons.inventory_2_rounded),
+              label: 'Stock',
+            ),
+          ],
+        ),
       ),
     );
-  }
-
-  Widget _buildPage(int index) {
-    switch (index) {
-      case 0:
-        return const DashboardPage();
-      case 1:
-        return const AlertsPage();
-      case 2:
-        return OperationsPage();
-      case 3:
-        return FinancePage();
-      default:
-        return const DashboardPage();
-    }
   }
 }

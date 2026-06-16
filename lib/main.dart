@@ -3,7 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_options.dart';
 import 'pages/main_shell.dart';
-import 'pages/auth_page.dart'; // FIXED: Pinned import statement directly to your AuthPage file location
+import 'pages/auth_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,28 +20,48 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'StockFlow',
+      title: 'WareWise',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
+        scaffoldBackgroundColor: const Color(0xFFF8FAFC), // Off-white canvas background
+        
+        // Applying your explicit Emerald Green Token Palette
+        colorScheme: const ColorScheme.light(
+          primary: Color(0xFF009473),      // Core Emerald Accent
+          secondary: Color(0xFF1CB08F),    // Vibrant Mint
+          tertiary: Color(0xFF01604B),     // Deep Forest Dark
+          surface: Colors.white,
+          outline: Color(0xFF6BC1AE),      // Soft Sage Intermediary
+        ),
+        
+        // Typography matching the high scannability of your UI mockup
+        fontFamily: 'Inter',
+        textTheme: const TextTheme(
+          headlineMedium: TextStyle(
+            color: Color(0xFF01604B),
+            fontWeight: FontWeight.bold,
+            letterSpacing: -0.5,
+          ),
+        ),
       ),
       home: StreamBuilder<User?>(
         stream: FirebaseAuth.instance.authStateChanges(),
         builder: (context, snapshot) {
-          // 1. Show a loading indicator while Firebase validates the active user session token state
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Scaffold(
-              body: Center(child: CircularProgressIndicator()),
+              body: Center(
+                child: CircularProgressIndicator(
+                  color: Color(0xFF009473),
+                ),
+              ),
             );
           }
 
-          // 2. If an active user token structure exists, route directly into the system dashboard
           if (snapshot.hasData) {
             return const MainShell();
           }
 
-          // 3. FIXED: If logged out or session null, bounce the frame straight to your actual AuthPage gateway
           return const AuthPage();
         },
       ),

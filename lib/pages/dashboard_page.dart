@@ -1,440 +1,381 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'dart:convert';
-import 'package:file_picker/file_picker.dart';
-
-import '../widgets/product_list_view.dart';
 import '../widgets/stat_card.dart';
-import 'product_detail_screen.dart';
+import 'alerts_page.dart'; // Complete route connection
 
-class DashboardPage extends StatefulWidget {
+class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
 
-  @override
-  State<DashboardPage> createState() => _DashboardPageState();
-}
+  // --- 📦 QUICK OPERATIONS FIRESTORE TRANSACTION ENGINE ---
+  void _showStockAdjustmentModal(BuildContext context, {required bool isAdding}) {
+    final skuController = TextEditingController();
+    final qtyController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool internalLoading = false;
 
-class _DashboardPageState extends State<DashboardPage> {
-  final CollectionReference _collection =
-      FirebaseFirestore.instance.collection('products');
-
-  String _searchQuery = '';
-  final TextEditingController _searchController = TextEditingController();
-  String _selectedCategory = 'All';
-
-  bool _isSelectionMode = false;
-  final Set<String> _selectedProductIds = {};
-  bool _isDeleting = false;
-  bool _isImporting = false;
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  // --- EXCEL-ALIGNED HIGH-PERFORMANCE CSV SEEDER ---
-  Future<void> manuallyImportCsv() async {
-    setState(() => _isImporting = true);
-    try {
-      FilePickerResult? result = await FilePicker.platform.pickFiles(
-        type: FileType.custom,
-        allowedExtensions: ['csv'],
-        withData: true,
-      );
-      if (result == null || result.files.isEmpty) return;
-
-      final bytes = result.files.single.bytes;
-      if (bytes == null) return;
-
-      final rawData = utf8.decode(bytes, allowMalformed: true);
-      final normalizedRawData =
-          rawData.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
-      List<String> allLines = normalizedRawData
-          .split('\n')
-          .where((line) => line.trim().isNotEmpty)
-          .toList();
-
-      if (allLines.length <= 1) return;
-
-      final String delimiter = allLines[0].contains(';') ? ';' : ',';
-      List<String> dataLines = allLines.sublist(1);
-
-      List<WriteBatch> batches = [FirebaseFirestore.instance.batch()];
-      int currentBatchIndex = 0;
-      int itemsInCurrentBatch = 0;
-      int processedRows = 0;
-
-      for (int i = 0; i < dataLines.length; i++) {
-        try {
-          String line = dataLines[i].trim();
-          List<String> row = [];
-          bool inQuotes = false;
-          StringBuffer currentField = StringBuffer();
-
-          for (int j = 0; j < line.length; j++) {
-            if (line[j] == '"') {
-              inQuotes = !inQuotes;
-            } else if (line[j] == delimiter && !inQuotes) {
-              row.add(currentField.toString().trim());
-              currentField.clear();
-            } else {
-              currentField.write(line[j]);
-            }
-          }
-          row.add(currentField.toString().trim());
-
-          if (row.isEmpty || row[0].isEmpty) continue;
-
-          // FIXED: Exact explicit column mapping matching your uploaded excel schema layout
-          String productName = row[0];
-          String category = row.length > 1 ? row[1].trim() : "Uncategorized";
-
-          double price = 0.0;
-          if (row.length > 2) {
-            price =
-                double.tryParse(row[2].replaceAll(RegExp(r'[^0-9.]'), '')) ??
-                    0.0;
-          }
-
-          String globalQty = row.length > 3 ? row[3].trim() : "0";
-          String minThreshold = row.length > 4 ? row[4].trim() : "0";
-
-          // FIXED: Reads real warehouse stocks from columns 5, 6, and 7 instead of random values
-          int berlinStock = row.length > 5 ? (int.tryParse(row[5]) ?? 0) : 0;
-          int hamburgStock = row.length > 6 ? (int.tryParse(row[6]) ?? 0) : 0;
-          int munichStock = row.length > 7 ? (int.tryParse(row[7]) ?? 0) : 0;
-
-          Map<String, dynamic> productDoc = {
-            "name": productName,
-            "category": category.isEmpty ? "Uncategorized" : category,
-            "price": price,
-            "minStockLevel": minThreshold,
-            "quantity": globalQty,
-            "cityStock": {
-              "Berlin": berlinStock,
-              "Hamburg": hamburgStock,
-              "Munich": munichStock
-            }
-          };
-
-          if (itemsInCurrentBatch >= 500) {
-            batches.add(FirebaseFirestore.instance.batch());
-            currentBatchIndex++;
-            itemsInCurrentBatch = 0;
-          }
-
-          batches[currentBatchIndex].set(_collection.doc(), productDoc);
-          itemsInCurrentBatch++;
-          processedRows++;
-        } catch (e) {
-          print("Error seeding row: $e");
-        }
-      }
-
-      await Future.wait(batches.map((batch) => batch.commit()));
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content:
-                Text('Successfully imported $processedRows items from Excel!'),
-            backgroundColor: Colors.green));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Error seeding: $e'), backgroundColor: Colors.red));
-      }
-    } finally {
-      setState(() => _isImporting = false);
-    }
-  }
-
-  void _handleLongPress(String productId) {
-    if (!_isSelectionMode) {
-      setState(() {
-        _isSelectionMode = true;
-        _selectedProductIds.add(productId);
-      });
-    }
-  }
-
-  void _handleToggleSelection(String productId) {
-    setState(() {
-      if (_selectedProductIds.contains(productId)) {
-        _selectedProductIds.remove(productId);
-        if (_selectedProductIds.isEmpty) _isSelectionMode = false;
-      } else {
-        _selectedProductIds.add(productId);
-      }
-    });
-  }
-
-  void _clearSelection() {
-    setState(() {
-      _selectedProductIds.clear();
-      _isSelectionMode = false;
-    });
-  }
-
-  Future<void> _deleteSelectedProducts() async {
-    if (_selectedProductIds.isEmpty) return;
-
-    bool confirmDelete = await showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Confirm Bulk Delete'),
-            content: Text(
-                'Delete ${_selectedProductIds.length} selected items from registry?'),
-            actions: [
-              TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('Cancel')),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red, foregroundColor: Colors.white),
-                onPressed: () => Navigator.pop(ctx, true),
-                child: const Text('Delete'),
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                left: 24,
+                right: 24,
+                top: 24,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
               ),
-            ],
-          ),
-        ) ??
-        false;
+              child: Form(
+                key: formKey,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          isAdding ? Icons.add_circle_rounded : Icons.unarchive_rounded,
+                          color: const Color(0xFF009473),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          isAdding ? 'Quick Stock In' : 'Quick Dispatch / Stock Out',
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF01604B)),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: skuController,
+                      decoration: const InputDecoration(
+                        labelText: 'Product SKU',
+                        hintText: 'Enter exact barcode SKU (e.g., PROD005)',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (v) => v == null || v.trim().isEmpty ? 'SKU field required' : null,
+                    ),
+                    const SizedBox(height: 12),
+                    TextFormField(
+                      controller: qtyController,
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(
+                        labelText: 'Unit Quantity',
+                        hintText: 'How many units?',
+                        border: OutlineInputBorder(),
+                      ),
+                      validator: (v) {
+                        if (v == null || int.tryParse(v.trim()) == null) return 'Enter a valid number';
+                        if (int.parse(v.trim()) <= 0) return 'Quantity must be greater than 0';
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF009473),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: internalLoading ? null : () async {
+                          if (!formKey.currentState!.validate()) return;
+                          
+                          setModalState(() => internalLoading = true);
+                          final targetSku = skuController.text.trim();
+                          final changeAmount = int.parse(qtyController.text.trim());
+                          
+                          final docRef = FirebaseFirestore.instance.collection('products').doc(targetSku);
+                          
+                          try {
+                            await FirebaseFirestore.instance.runTransaction((transaction) async {
+                              final snapshot = await transaction.get(docRef);
+                              
+                              if (!snapshot.exists) {
+                                throw Exception("SKU '$targetSku' does not exist in inventory system.");
+                              }
+                              
+                              final int currentQty = int.tryParse(snapshot.get('quantity').toString()) ?? 0;
+                              int newQty = isAdding ? (currentQty + changeAmount) : (currentQty - changeAmount);
+                              
+                              if (newQty < 0) {
+                                throw Exception("Insufficient inventory. Only $currentQty units available.");
+                              }
+                              
+                              transaction.update(docRef, {'quantity': newQty});
+                            });
 
-    if (!confirmDelete) return;
-    setState(() => _isDeleting = true);
+                            if (context.mounted) {
+                              Navigator.pop(context);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('Inventory Quantities Synchronized!'), backgroundColor: Color(0xFF009473)),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text(e.toString().replaceAll('Exception:', '')), backgroundColor: Colors.redAccent),
+                              );
+                            }
+                          } finally {
+                            if (context.mounted) setModalState(() => internalLoading = false);
+                          }
+                        },
+                        child: internalLoading 
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Text('Execute Inventory Modification Ledger'),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 
-    try {
-      final batch = FirebaseFirestore.instance.batch();
-      for (String id in _selectedProductIds) {
-        batch.delete(_collection.doc(id));
-      }
-      int totalDeleted = _selectedProductIds.length;
-      await batch.commit();
-      _clearSelection();
-      if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Deleted $totalDeleted products.'),
-            backgroundColor: Colors.redAccent));
-    } catch (e) {
-      if (mounted)
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-            content: Text('Deletion failed: $e'), backgroundColor: Colors.red));
-    } finally {
-      setState(() => _isDeleting = false);
-    }
+  // --- 🧭 REDIRECT CONTROLLER SHORTCUT ---
+  void _navigateToStockTab(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const AlertsPage()),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    
+    // Breakpoint manager preventing layout compression alerts on high-density browser panels
+    int crossAxisCount = 2;
+    double aspectRatio = 1.4;
+    
+    if (screenWidth > 1100) {
+      crossAxisCount = 4;
+      aspectRatio = 1.7;
+    } else if (screenWidth > 650) {
+      crossAxisCount = 2;
+      aspectRatio = 1.4;
+    }
+
     return Scaffold(
-      body: _isDeleting
-          ? const Center(child: CircularProgressIndicator())
-          : Padding(
-              padding: const EdgeInsets.all(16.0),
+      backgroundColor: const Color(0xFFF8FAFC),
+      body: SafeArea(
+        child: StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance.collection('products').snapshots(),
+          builder: (context, snapshot) {
+            String totalItemsCount = '...';
+            String totalInventoryValue = '...';
+            String activeAlertsCount = '0';
+
+            if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
+              final docs = snapshot.data!.docs;
+              int itemsSum = 0;
+              double monetaryValueSum = 0.0;
+              int lowStockAlerts = 0;
+
+              for (var doc in docs) {
+                final data = doc.data() as Map<String, dynamic>;
+                
+                final String rawQuantity = data['quantity']?.toString() ?? '0';
+                final String rawPrice = data['price']?.toString() ?? '0.0';
+
+                final int quantity = int.tryParse(rawQuantity) ?? 0;
+                final double price = double.tryParse(rawPrice) ?? 0.0;
+                
+                // Set threshold to 1000 to match your wholesale CSV file structures perfectly
+                const int forcedMinThreshold = 1000; 
+
+                itemsSum += quantity;
+                monetaryValueSum += (quantity * price);
+                
+                if (quantity <= forcedMinThreshold) {
+                  lowStockAlerts++;
+                }
+              }
+
+              totalItemsCount = itemsSum.toString();
+              totalInventoryValue = '\$${monetaryValueSum.toStringAsFixed(0)}';
+              activeAlertsCount = lowStockAlerts.toString();
+            }
+
+            return SingleChildScrollView(
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.all(24.0),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  if (!_isSelectionMode)
-                    TextField(
-                      controller: _searchController,
-                      decoration: InputDecoration(
-                        labelText: 'Search Products',
-                        prefixIcon: const Icon(Icons.search),
-                        suffixIcon: _searchQuery.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear),
-                                onPressed: () {
-                                  _searchController.clear();
-                                  setState(() => _searchQuery = '');
-                                },
-                              )
-                            : null,
-                        border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                      ),
-                      onChanged: (value) => setState(
-                          () => _searchQuery = value.toLowerCase().trim()),
+                  // --- HERO BRAND CONTAINER BANNER ---
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(24),
+                    margin: const EdgeInsets.only(bottom: 24),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF01604B),
+                      borderRadius: BorderRadius.circular(16),
                     ),
-                  if (!_isSelectionMode) const SizedBox(height: 16),
-                  Expanded(
-                    child: StreamBuilder<QuerySnapshot>(
-                      stream: _collection.snapshots(),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const Center(
-                              child: CircularProgressIndicator());
-                        }
-
-                        final docs = snapshot.data?.docs ?? [];
-
-                        // Dynamically pull unique categories directly from your database logs
-                        final Set<String> uniqueCategories = {'All'};
-                        for (var d in docs) {
-                          final data = d.data() as Map<String, dynamic>? ?? {};
-                          final String cat =
-                              data['category']?.toString()?.trim() ??
-                                  'Uncategorized';
-                          if (cat.isNotEmpty) uniqueCategories.add(cat);
-                        }
-
-                        final List<String> computedCategories =
-                            uniqueCategories.toList()
-                              ..sort((a, b) {
-                                if (a == 'All') return -1;
-                                if (b == 'All') return 1;
-                                return a.compareTo(b);
-                              });
-
-                        if (!computedCategories.contains(_selectedCategory)) {
-                          _selectedCategory = 'All';
-                        }
-
-                        final List<Map<String, dynamic>> products = docs
-                            .map<Map<String, dynamic>>(
-                                (QueryDocumentSnapshot d) {
-                          final data = d.data() as Map<String, dynamic>? ?? {};
-                          return <String, dynamic>{
-                            'id': d.id,
-                            'name':
-                                data['name']?.toString() ?? 'Unknown Product',
-                            'category': data['category']?.toString()?.trim() ??
-                                'Uncategorized',
-                            'quantity': data['quantity']?.toString() ?? '0',
-                            'minStockLevel':
-                                data['minStockLevel']?.toString() ?? '0',
-                            'cityStock': data['cityStock'] ?? {},
-                          };
-                        }).where((Map<String, dynamic> product) {
-                          if (_selectedCategory != 'All' &&
-                              product['category'] != _selectedCategory)
-                            return false;
-                          if (_searchQuery.isNotEmpty &&
-                              !(product['name']
-                                  .toString()
-                                  .toLowerCase()
-                                  .contains(_searchQuery))) return false;
-                          return true;
-                        }).toList();
-
-                        int totalBerlinVolume = 0;
-                        int totalHamburgVolume = 0;
-                        int totalMunichVolume = 0;
-
-                        for (var p in products) {
-                          final cityMap = p['cityStock'] as Map? ?? {};
-                          totalBerlinVolume += int.tryParse(
-                                  cityMap['Berlin']?.toString() ?? '0') ??
-                              0;
-                          totalHamburgVolume += int.tryParse(
-                                  cityMap['Hamburg']?.toString() ?? '0') ??
-                              0;
-                          totalMunichVolume += int.tryParse(
-                                  cityMap['Munich']?.toString() ?? '0') ??
-                              0;
-                        }
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (!_isSelectionMode) ...[
-                              const Text('Filter by Category',
-                                  style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: Colors.grey)),
-                              const SizedBox(height: 8),
-                              SizedBox(
-                                height: 40,
-                                child: ListView.builder(
-                                  scrollDirection: Axis.horizontal,
-                                  itemCount: computedCategories.length,
-                                  itemBuilder: (context, index) {
-                                    final category = computedCategories[index];
-                                    final isSelected =
-                                        _selectedCategory == category;
-                                    return Padding(
-                                      padding:
-                                          const EdgeInsets.only(right: 8.0),
-                                      child: ChoiceChip(
-                                        label: Text(category),
-                                        selected: isSelected,
-                                        onSelected: (selected) {
-                                          if (selected)
-                                            setState(() =>
-                                                _selectedCategory = category);
-                                        },
-                                        selectedColor: Theme.of(context)
-                                            .colorScheme
-                                            .primaryContainer,
-                                      ),
-                                    );
-                                  },
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Welcome to WareWise',
+                          style: TextStyle(color: Color(0xFF99D4C7), fontSize: 13, fontWeight: FontWeight.w500),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Smarter Inventory Control Hub',
+                          style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 16),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Row(
+                            children: const [
+                              Icon(Icons.layers_outlined, color: Color(0xFF1CB08F), size: 18),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  "Operations Panel Active",
+                                  style: TextStyle(color: Colors.white70, fontSize: 13),
                                 ),
                               ),
-                              const SizedBox(height: 16),
                             ],
-                            if (!_isSelectionMode) ...[
-                              Row(
-                                children: [
-                                  Expanded(
-                                      child: StatCard(
-                                          icon: Icons.location_city,
-                                          label: 'Berlin Hub Vol',
-                                          value: '$totalBerlinVolume',
-                                          color: Colors.blue)),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                      child: StatCard(
-                                          icon: Icons.warehouse,
-                                          label: 'Hamburg Hub Vol',
-                                          value: '$totalHamburgVolume',
-                                          color: Colors.teal)),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                      child: StatCard(
-                                          icon: Icons.domain,
-                                          label: 'Munich Hub Vol',
-                                          value: '$totalMunichVolume',
-                                          color: Colors.deepPurple)),
-                                ],
-                              ),
-                              const SizedBox(height: 24),
-                            ],
-                            Expanded(
-                              child: ProductListView(
-                                products: products,
-                                isSelectionMode: _isSelectionMode,
-                                selectedProductIds: _selectedProductIds,
-                                onToggleSelection: _handleToggleSelection,
-                                onLongPress: _handleLongPress,
-                                onProductTap:
-                                    (Map<String, dynamic> tappedProduct) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                        builder: (_) => ProductDetailScreen(
-                                            product: tappedProduct)),
-                                  );
-                                },
-                              ),
-                            ),
-                          ],
-                        );
-                      },
+                          ),
+                        )
+                      ],
                     ),
                   ),
+
+                  // --- 🛡️ GRIDVIEW MATRIX WRAPPER ---
+                  GridView.count(
+                    crossAxisCount: crossAxisCount,
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    mainAxisSpacing: 16,
+                    crossAxisSpacing: 16,
+                    childAspectRatio: aspectRatio,
+                    children: [
+                      StatCard(icon: Icons.inventory_2_outlined, label: 'Total Items', value: totalItemsCount, flagColor: const Color(0xFF1CB08F)),
+                      StatCard(icon: Icons.account_balance_wallet_outlined, label: 'Inventory Value', value: totalInventoryValue, flagColor: const Color(0xFF1CB08F)),
+                      StatCard(
+                        icon: Icons.shopping_cart_outlined, 
+                        label: 'Low Stock Items', 
+                        value: activeAlertsCount, 
+                        flagColor: activeAlertsCount == '0' ? const Color(0xFF1CB08F) : const Color(0xFFF59E0B),
+                      ),
+                      const StatCard(icon: Icons.trending_up_rounded, label: 'Monthly Profit', value: '\$4,120', flagColor: Color(0xFF1CB08F)),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+
+                  // --- QUICK OPERATIONS ROW SECTION ---
+                  const Text(
+                    'Quick Operations',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF01604B)),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(child: _buildQuickOpsButton('Stock In', Icons.add_circle_outline_rounded, () => _showStockAdjustmentModal(context, isAdding: true))),
+                      const SizedBox(width: 16),
+                      Expanded(child: _buildQuickOpsButton('Dispatch', Icons.unarchive_outlined, () => _showStockAdjustmentModal(context, isAdding: false))),
+                      const SizedBox(width: 16),
+                      Expanded(child: _buildQuickOpsButton('Reports', Icons.insert_chart_outlined_rounded, () {
+                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Generating System Inventory Summary PDF Manifest...')));
+                      })),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+
+                  // --- EXCEPTION ALERT PANEL ---
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Low Stock Alerts',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF01604B)),
+                      ),
+                      TextButton(
+                        onPressed: () => _navigateToStockTab(context),
+                        child: const Text('View All', style: TextStyle(color: Color(0xFF009473), fontWeight: FontWeight.bold)),
+                      )
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  InkWell(
+                    onTap: () => _navigateToStockTab(context),
+                    borderRadius: BorderRadius.circular(16),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Column(
+                        children: [
+                          Icon(
+                            activeAlertsCount == '0' ? Icons.check_circle_outline_rounded : Icons.warning_amber_rounded, 
+                            color: activeAlertsCount == '0' ? const Color(0xFF1CB08F) : const Color(0xFFF59E0B), 
+                            size: 36,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            activeAlertsCount == '0' ? 'All stock levels healthy' : '$activeAlertsCount items need immediate restocking',
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1F2937), fontSize: 15),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 100),
                 ],
               ),
-            ),
-      floatingActionButton: _isSelectionMode
-          ? null
-          : FloatingActionButton.extended(
-              onPressed: _isImporting ? null : manuallyImportCsv,
-              icon: _isImporting
-                  ? const CircularProgressIndicator(color: Colors.white)
-                  : const Icon(Icons.upload_file),
-              label: Text(_isImporting ? 'Importing...' : 'Import CSV'),
-            ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildQuickOpsButton(String label, IconData icon, VoidCallback onTapAction) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: InkWell(
+        onTap: onTapAction,
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 18.0),
+          child: Column(
+            children: [
+              Icon(icon, color: const Color(0xFF009473), size: 26),
+              const SizedBox(height: 8),
+              Text(
+                label,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF01604B)),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

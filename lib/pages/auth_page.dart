@@ -9,13 +9,15 @@ class AuthPage extends StatefulWidget {
 }
 
 class _AuthPageState extends State<AuthPage> {
-  // Exact Amazon color palette mappings
-  static const Color amazonBlue = Color(0xFF146EB4);
-  static const Color amazonDarkBlue = Color(0xFF232F3E);
-  static const Color amazonLightGrey = Color(0xFFF2F2F2);
-  static const Color amazonBlack = Color(0xFF000000);
+  // Tokenized Emerald Green Design System Colors
+  static const Color emeraldDarkForest = Color(0xFF01604B);
+  static const Color emeraldCore = Color(0xFF009473);
+  static const Color emeraldSage = Color(0xFF6BC1AE);
+  static const Color emeraldPastel = Color(0xFF99D4C7);
 
   bool isLogin = true;
+  bool isGerman = false; // Controls localization strings globally across layout
+  
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   String? errorMessage;
@@ -28,11 +30,12 @@ class _AuthPageState extends State<AuthPage> {
     super.dispose();
   }
 
-  // Preserved Firebase Authentication Submit Core
   Future<void> submit() async {
     if (emailController.text.trim().isEmpty ||
         passwordController.text.trim().isEmpty) {
-      setState(() => errorMessage = 'Please fill out all credential fields.');
+      setState(() => errorMessage = isGerman 
+          ? 'Bitte füllen Sie alle Anmeldefelder aus.' 
+          : 'Please fill out all credential fields.');
       return;
     }
 
@@ -65,194 +68,246 @@ class _AuthPageState extends State<AuthPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: amazonLightGrey,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
-            padding:
-                const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // --- TOP MIDDLE MANDATORY TITLE ---
-                const Text(
-                  'AMAZON MWIS',
-                  style: TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w900,
-                    color: amazonDarkBlue,
-                    letterSpacing: 0.75,
-                  ),
-                ),
-                const SizedBox(height: 32),
-
-                // --- CENTRAL CARD COMPONENT ---
-                Card(
-                  elevation: 4,
-                  shadowColor: Colors.black26,
-                  color: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(24.0),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        // Amazon Blue Branding Lock Icon
-                        const Icon(
-                          Icons.lock,
-                          size: 44,
-                          color: amazonBlue,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          isLogin ? 'Sign In' : 'Create Account',
-                          style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.bold,
-                            color: amazonBlack,
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Email Text Input Field
-                        TextField(
-                          controller: emailController,
-                          keyboardType: TextInputType.emailAddress,
-                          textInputAction: TextInputAction.next,
-                          decoration: InputDecoration(
-                            labelText: 'Email',
-                            labelStyle: const TextStyle(color: Colors.black54),
-                            filled: true,
-                            fillColor: amazonLightGrey.withOpacity(0.5),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide:
-                                  const BorderSide(color: Colors.black12),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(
-                                  color: amazonBlue, width: 1.5),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 16),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-
-                        // Password Text Input Field
-                        TextField(
-                          controller: passwordController,
-                          obscureText: true,
-                          textInputAction: TextInputAction.done,
-                          onSubmitted: (_) => submit(),
-                          decoration: InputDecoration(
-                            labelText: 'Password',
-                            labelStyle: const TextStyle(color: Colors.black54),
-                            filled: true,
-                            fillColor: amazonLightGrey.withOpacity(0.5),
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide:
-                                  const BorderSide(color: Colors.black12),
-                            ),
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(
-                                  color: amazonBlue, width: 1.5),
-                            ),
-                            contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 16),
-                          ),
-                        ),
-
-                        // Error Message Display Section
-                        if (errorMessage != null) ...[
-                          const SizedBox(height: 16),
-                          Text(
-                            errorMessage!,
-                            style: const TextStyle(
-                                color: Colors.red,
-                                fontSize: 13,
-                                fontWeight: FontWeight.w500),
-                            textAlign: TextAlign.center,
-                          ),
+            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 400),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // --- TOP MANDATORY BRAND LOGO ASSET ---
+                  Center(
+                    child: Container(
+                      width: 84,
+                      height: 84,
+                      decoration: BoxDecoration(
+                        color: emeraldCore,
+                        borderRadius: BorderRadius.circular(24),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.1),
+                            blurRadius: 10,
+                            offset: const Offset(0, 4),
+                          )
                         ],
+                      ),
+                      child: const Icon(
+                        Icons.inventory_2_rounded, // Smart vector asset block frame placeholder
+                        color: Colors.white,
+                        size: 40,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
 
-                        const SizedBox(height: 24),
+                  Center(
+                    child: Text(
+                      'WareWise',
+                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: emeraldDarkForest,
+                      ),
+                    ),
+                  ),
+                  Center(
+                    child: Text(
+                      isGerman ? 'Intelligente Bestandsverwaltung' : 'Smarter Inventory, Simpler Operations',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
 
-                        // Primary Action Button (Amazon Dark Slate Blue)
-                        SizedBox(
-                          width: double.infinity,
-                          height: 48,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: amazonDarkBlue,
-                              foregroundColor: Colors.white,
-                              elevation: 1,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(24),
-                              ),
-                            ),
-                            onPressed: isLoading ? null : submit,
-                            child: isLoading
-                                ? const SizedBox(
-                                    height: 20,
-                                    width: 20,
-                                    child: CircularProgressIndicator(
-                                      color: Colors.white,
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : Text(
-                                    isLogin ? 'Sign In' : 'Register',
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                          ),
+                  // --- MULTILINGUAL TOGGLE RAIL ---
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE2E8F0),
+                      borderRadius: BorderRadius.circular(30),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          isGerman ? '🇩🇪 Deutsch' : '🇬🇧 English',
+                          style: const TextStyle(fontWeight: FontWeight.bold, color: emeraldDarkForest),
+                        ),
+                        Switch(
+                          value: isGerman,
+                          activeColor: emeraldCore,
+                          inactiveTrackColor: emeraldPastel,
+                          onChanged: (value) {
+                            setState(() {
+                              isGerman = value;
+                            });
+                          },
                         ),
                       ],
                     ),
                   ),
-                ),
-                const SizedBox(height: 20),
+                  const SizedBox(height: 32),
 
-                // --- BOTTOM DYNAMIC TOGGLE BUTTON PILL ---
-                InkWell(
-                  borderRadius: BorderRadius.circular(20),
-                  onTap: () {
-                    setState(() {
-                      isLogin = !isLogin;
-                      errorMessage = null;
-                    });
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE2E5E9),
+                  // --- MAIN USER ACTION CARD FORM CONTAINER ---
+                  Card(
+                    elevation: 2,
+                    shadowColor: Colors.black12,
+                    color: Colors.white,
+                    shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Text(
-                      isLogin
-                          ? "Don't have an account? Register"
-                          : "Already have an account? Sign In",
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: amazonDarkBlue,
-                        fontWeight: FontWeight.w600,
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isGerman ? 'Willkommen zurück' : 'Welcome Back',
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: emeraldDarkForest,
+                            ),
+                          ),
+                          Text(
+                            isGerman 
+                                ? 'Anmelden, um das Lager zu verwalten' 
+                                : 'Sign in to manage your warehouse',
+                            style: const TextStyle(fontSize: 13, color: Colors.grey),
+                          ),
+                          const SizedBox(height: 24),
+
+                          // Email Input field
+                          TextField(
+                            controller: emailController,
+                            keyboardType: TextInputType.emailAddress,
+                            textInputAction: TextInputAction.next,
+                            decoration: InputDecoration(
+                              labelText: isGerman ? 'E-Mail' : 'Email',
+                              labelStyle: const TextStyle(color: Colors.black54, fontSize: 14),
+                              filled: true,
+                              fillColor: const Color(0xFFF8FAFC),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: emeraldPastel),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: emeraldCore, width: 2),
+                              ),
+                              contentPadding: const EdgeInsets.all(16),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Password Input field
+                          TextField(
+                            controller: passwordController,
+                            obscureText: true,
+                            textInputAction: TextInputAction.done,
+                            onSubmitted: (_) => submit(),
+                            decoration: InputDecoration(
+                              labelText: isGerman ? 'Passwort' : 'Password',
+                              labelStyle: const TextStyle(color: Colors.black54, fontSize: 14),
+                              filled: true,
+                              fillColor: const Color(0xFFF8FAFC),
+                              enabledBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: emeraldPastel),
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                borderSide: const BorderSide(color: emeraldCore, width: 2),
+                              ),
+                              contentPadding: const EdgeInsets.all(16),
+                            ),
+                          ),
+
+                          if (errorMessage != null) ...[
+                            const SizedBox(height: 16),
+                            Center(
+                              child: Text(
+                                errorMessage!,
+                                style: const TextStyle(
+                                  color: Colors.redAccent,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ],
+
+                          const SizedBox(height: 24),
+
+                          // Execution Button (Emerald Green Accent)
+                          SizedBox(
+                            width: double.infinity,
+                            height: 50,
+                            child: ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: emeraldCore,
+                                foregroundColor: Colors.white,
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              onPressed: isLoading ? null : submit,
+                              child: isLoading
+                                  ? const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        color: Colors.white,
+                                        strokeWidth: 2,
+                                      ),
+                                    )
+                                  : Text(
+                                      isLogin 
+                                          ? (isGerman ? 'Einloggen' : 'Sign In') 
+                                          : (isGerman ? 'Registrieren' : 'Register'),
+                                      style: const TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 24),
+
+                  // --- SUB VIEW DISPATCH INTERCHANGE LINK (ACCOUNT TOGGLE) ---
+                  Center(
+                    child: TextButton(
+                      style: TextButton.styleFrom(foregroundColor: emeraldDarkForest),
+                      onPressed: () {
+                        setState(() {
+                          isLogin = !isLogin;
+                          errorMessage = null;
+                        });
+                      },
+                      child: Text(
+                        isLogin
+                            ? (isGerman ? "Noch kein Konto? Registrieren" : "Don't have an account? Register")
+                            : (isGerman ? "Bereits registriert? Einloggen" : "Already have an account? Sign In"),
+                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),

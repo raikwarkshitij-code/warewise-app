@@ -1,43 +1,72 @@
 import 'package:flutter/material.dart';
 
-/// A reusable widget for displaying a single statistic: an icon, a big number, and a label.
 class StatCard extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
-  final Color color;
+  final Color flagColor; // Represents your color code rule: Green = Good, Orange = Warning
 
   const StatCard({
     super.key,
     required this.icon,
     required this.label,
     required this.value,
-    required this.color,
+    required this.flagColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-        child: Column(
-          children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(height: 6),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: color,
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Top Row: Functional Icon and Structural Color Identifier Tag
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Icon(icon, color: const Color(0xFF01604B), size: 22),
+              Container(
+                width: 24,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: flagColor,
+                  borderRadius: BorderRadius.circular(4),
+                ),
               ),
-            ),
-            const SizedBox(height: 2),
-            Text(label,
-                style: const TextStyle(fontSize: 11, color: Colors.grey)),
-          ],
-        ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Bottom Column: Left-aligned High-Density metrics
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                value,
+                style: const TextStyle(
+                  fontSize: 20, 
+                  fontWeight: FontWeight.w900, 
+                  color: Color(0xFF1F2937),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 12, 
+                  color: Colors.grey, 
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
