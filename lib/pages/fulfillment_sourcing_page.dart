@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/firestore.dart';
+import '../services/operations_ai.dart';
+import '../services/supplier_service.dart';
+import '../widgets/supplier_decision_matrix.dart';
 
 class FulfillmentSourcingPage extends StatefulWidget {
   final String productSku;
   final String productName;
   final int currentStock;
-  final VoidCallback? onTransferExecuted; // Callback to trigger root tab switching
+  final VoidCallback?
+      onTransferExecuted; // Callback to trigger root tab switching
 
   const FulfillmentSourcingPage({
     super.key,
@@ -16,243 +21,301 @@ class FulfillmentSourcingPage extends StatefulWidget {
   });
 
   @override
-  State<FulfillmentSourcingPage> createState() => _FulfillmentSourcingPageState();
+  State<FulfillmentSourcingPage> createState() =>
+      _FulfillmentSourcingPageState();
 }
 
 class _FulfillmentSourcingPageState extends State<FulfillmentSourcingPage> {
   bool _isProcessing = false;
 
-  final List<Map<String, dynamic>> _otherWarehouses = [
-    {'name': 'Munich Logistics Hub (Zone South)', 'availableStock': 1420, 'transitDays': 1},
-    {'name': 'Frankfurt Fulfillment Center', 'availableStock': 95, 'transitDays': 2},
-    {'name': 'Hamburg Port Warehouse', 'availableStock': 0, 'transitDays': 4},
-  ];
+  // Fetched once (Balanced strategy) and shared as the INITIAL ranking for
+  // both the recommendation banner and the Compare Suppliers matrix below,
+  // so on first load the two surfaces agree on the #1 supplier. The matrix
+  // lets the manager switch strategy locally afterwards — see its own
+  // strategy selector — which only re-ranks the matrix, not this banner.
+  late final Future<SupplierRankingResult> _rankingFuture =
+      SupplierService.getSupplierRanking(widget.productSku);
+  late final Future<_SourcingData> _dataFuture = _loadData();
 
-  final Map<String, dynamic> _primarySupplier = {
-    'company': 'Apex Global Distribution GmbH',
-    'moq': 500,
-    'unitCost': 12.50,
-    'leadTimeDays': 7,
-  };
+  Future<_SourcingData> _loadData() async {
+    final productSnap =
+        await db.collection('products').doc(widget.productSku).get();
+    final product = productSnap.data() ?? {};
 
-  Future<void> _executeInterWarehouseTransfer(String sourceWarehouse, int transferQty) async {
+    Map<String, dynamic>? restrictedData;
+    try {
+      final result = await _rankingFuture;
+      final top = result.recommended;
+      if (top != null) {
+        restrictedData = {
+          'supplierName': top.supplierName,
+          'costPerUnit': top.unitCost,
+          'leadTimeDays': top.leadTimeDays,
+        };
+      }
+    } catch (_) {
+      restrictedData = null;
+    }
+
+    final decision = OperationsAI.calculateOptimalRoute(product,
+        restrictedData: restrictedData);
+    return _SourcingData(product: product, decision: decision);
+  }
+
+  Future<void> _executeInterWarehouseTransfer(
+      String sourceHub, String destinationHub, int transferQty) async {
     setState(() => _isProcessing = true);
     try {
-      await Future.delayed(const Duration(milliseconds: 1200));
-      
-      final docRef = FirebaseFirestore.instance.collection('products').doc(widget.productSku);
-      await FirebaseFirestore.instance.runTransaction((transaction) async {
-        final snapshot = await transaction.get(docRef);
-        if (!snapshot.exists) return;
-        int currentQty = int.tryParse(snapshot.get('quantity').toString()) ?? 0;
-        transaction.update(docRef, {'quantity': currentQty + transferQty});
+      await db.collection('transfers').add({
+        'productId': widget.productSku,
+        'productName': widget.productName,
+        'from': sourceHub,
+        'to': destinationHub,
+        'volume': transferQty,
+        'status': 'Pending',
+        'createdAt': FieldValue.serverTimestamp(),
       });
 
       if (mounted) {
-        // 1. Pop back out of this sourcing sub-page view stack
         Navigator.pop(context);
-        
-        // 2. Fire the redirection callback to change global bottom navigation index
         if (widget.onTransferExecuted != null) {
           widget.onTransferExecuted!();
         }
-
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Logistics Pipeline Initiated: Transfer order created from $sourceWarehouse!'),
+            content: Text(
+                'Transfer request created from $sourceHub — awaiting manager approval.'),
             backgroundColor: const Color(0xFF009473),
           ),
         );
       }
     } catch (e) {
-      setState(() => _isProcessing = false);
-    }
-  }
-
-  Future<void> _raisePurchaseOrder() async {
-    setState(() => _isProcessing = true);
-    try {
-      await Future.delayed(const Duration(milliseconds: 1500));
       if (mounted) {
-        Navigator.pop(context);
-        _showPODialog();
+        setState(() => _isProcessing = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Failed to create transfer: $e'),
+              backgroundColor: Colors.red),
+        );
       }
-    } catch (e) {
-      setState(() => _isProcessing = false);
     }
-  }
-
-  void _showPODialog() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: const [
-            Icon(Icons.assignment_turned_in_rounded, color: Color(0xFF01604B)),
-            SizedBox(width: 8),
-            Text('PO Raised Successfully'),
-          ],
-        ),
-        content: Text(
-          'Purchase Order Manifest signed and transmitted to ${_primarySupplier['company']}.\n\n'
-          '• Standard MOQ: ${_primarySupplier['moq']} Units\n'
-          '• Expected Delivery Lead Time: ${_primarySupplier['leadTimeDays']} Days',
-          style: const TextStyle(height: 1.4),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Acknowledge', style: TextStyle(color: Color(0xFF009473), fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final mapWarehouse = _otherWarehouses.firstWhere(
-      (w) => w['availableStock'] >= 500,
-      orElse: () => {},
-    );
-    
-    final bool canTransferInternally = mapWarehouse.isNotEmpty;
-
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         backgroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Color(0xFF01604B), size: 20),
+          icon: const Icon(Icons.arrow_back_ios_new_rounded,
+              color: Color(0xFF01604B), size: 20),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Supply Chain Sourcing Engine', style: TextStyle(color: Color(0xFF01604B), fontSize: 16, fontWeight: FontWeight.bold)),
+        title: const Text('Supply Chain Sourcing Engine',
+            style: TextStyle(
+                color: Color(0xFF01604B),
+                fontSize: 16,
+                fontWeight: FontWeight.bold)),
       ),
       body: _isProcessing
-          ? const Center(child: CircularProgressIndicator(color: Color(0xFF009473)))
-          : SingleChildScrollView(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('SKU: ${widget.productSku}', style: const TextStyle(color: Colors.grey, fontSize: 12, fontWeight: FontWeight.bold)),
-                        const SizedBox(height: 4),
-                        Text(widget.productName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF1F2937))),
-                        const Divider(height: 24),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF009473)))
+          : FutureBuilder<_SourcingData>(
+              future: _dataFuture,
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const Center(
+                      child:
+                          CircularProgressIndicator(color: Color(0xFF009473)));
+                }
+                final data = snapshot.data!;
+                final decision = data.decision;
+                final bool canTransfer =
+                    decision.recommendedAction == 'TRANSFER';
+                final bool canPurchase =
+                    decision.recommendedAction == 'PURCHASE';
+                final cityStock = Map<String, dynamic>.from(
+                    data.product['cityStock'] as Map? ?? {});
+                final unitsNeeded = decision.unitsNeeded;
+
+                return SingleChildScrollView(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(20),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const Text('Current Local Stock:', style: TextStyle(color: Colors.grey)),
-                            Text('${widget.currentStock} Units', style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.redAccent)),
+                            Text('SKU: ${widget.productSku}',
+                                style: const TextStyle(
+                                    color: Colors.grey,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 4),
+                            Text(widget.productName,
+                                style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF1F2937))),
+                            const Divider(height: 24),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('Current Local Stock:',
+                                    style: TextStyle(color: Colors.grey)),
+                                Text('${widget.currentStock} Units',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.w900,
+                                        color: Colors.redAccent)),
+                              ],
+                            ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  Text(
-                    canTransferInternally ? '💡 Recommended Strategy: Internal Transfer' : '🏭 Recommended Strategy: Procurement PO',
-                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF01604B)),
-                  ),
-                  const SizedBox(height: 12),
-                  if (canTransferInternally)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE6F4F1),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFF99D4C7)),
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: const [
-                              Icon(Icons.local_shipping_outlined, color: Color(0xFF009473)),
-                              SizedBox(width: 8),
-                              Text('Network Inventory Discovered', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF01604B))),
+                      const SizedBox(height: 24),
+                      Text(
+                        canTransfer
+                            ? '💡 Recommended Strategy: Internal Transfer'
+                            : '🏭 Recommended Strategy: Procurement PO',
+                        style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF01604B)),
+                      ),
+                      const SizedBox(height: 12),
+                      if (canTransfer)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE6F4F1),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFF99D4C7)),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: const [
+                                  Icon(Icons.local_shipping_outlined,
+                                      color: Color(0xFF009473)),
+                                  SizedBox(width: 8),
+                                  Text('Network Inventory Discovered',
+                                      style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Color(0xFF01604B))),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Text('Source Hub: ${decision.targetName}'),
+                              Text(
+                                  'Available Network Stock: ${cityStock[decision.targetName] ?? 0} Units'),
+                              Text(
+                                  'Logistics ETA: ${decision.leadTimeDays} Day Transit'),
+                              const SizedBox(height: 20),
+                              SizedBox(
+                                width: double.infinity,
+                                height: 44,
+                                child: ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF009473),
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                        borderRadius:
+                                            BorderRadius.circular(10)),
+                                  ),
+                                  icon: const Icon(Icons.swap_horiz_rounded),
+                                  label: Text(
+                                      'Request Transfer (${unitsNeeded > 0 ? unitsNeeded : 0} Units)',
+                                      style: const TextStyle(
+                                          fontWeight: FontWeight.bold)),
+                                  onPressed: () =>
+                                      _executeInterWarehouseTransfer(
+                                    decision.targetName,
+                                    decision.shortageHub,
+                                    unitsNeeded > 0 ? unitsNeeded : 0,
+                                  ),
+                                ),
+                              )
                             ],
                           ),
-                          const SizedBox(height: 12),
-                          Text('Source Hub: ${mapWarehouse['name']}'),
-                          Text('Available Network Stock: ${mapWarehouse['availableStock']} Units'),
-                          Text('Logistics ETA: Only ${mapWarehouse['transitDays']} Day Transit'),
-                          const SizedBox(height: 20),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 44,
-                            child: ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF009473), 
-                                foregroundColor: Colors.white, 
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
+                        ),
+                      if (canPurchase)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF3C7),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFFCD34D)),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.business_center_outlined,
+                                  color: Color(0xFFD97706)),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                    'No hub has surplus stock — reorder from a supplier below. AI-suggested pick: ${decision.targetName}.',
+                                    style: const TextStyle(
+                                        color: Color(0xFFB45309),
+                                        fontSize: 13)),
                               ),
-                              icon: const Icon(Icons.swap_horiz_rounded),
-                              label: const Text('Execute Inter-Warehouse Rebalance (500 Units)', style: TextStyle(fontWeight: FontWeight.bold)),
-                              onPressed: () => _executeInterWarehouseTransfer(mapWarehouse['name'], 500),
-                            ),
-                          )
-                        ],
-                      ),
-                    ),
-                  if (!canTransferInternally)
-                    Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFEF3C7),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: const Color(0xFFFCD34D)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: const [
-                              Icon(Icons.business_center_outlined, color: Color(0xFFD97706)),
-                              SizedBox(width: 8),
-                              Text('Logistics Network Stock Exhausted', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFB45309))),
                             ],
                           ),
-                          const SizedBox(height: 12),
-                          Text('Assigned Vendor: ${_primarySupplier['company']}'),
-                          Text('Supplier MOQ Reorder constraint: ${_primarySupplier['moq']} Units'),
-                          Text('Procurement Lead Time: ${_primarySupplier['leadTimeDays']} Days via Factory Freight'),
-                          const SizedBox(height: 20),
-                          SizedBox(
-                            width: double.infinity,
-                            height: 44,
-                            child: ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFFD97706), 
-                                foregroundColor: Colors.white, 
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10))
-                              ),
-                              icon: const Icon(Icons.shopping_cart_checkout_rounded),
-                              label: const Text('Authorize & Raise Purchase Order (PO)', style: TextStyle(fontWeight: FontWeight.bold)),
-                              onPressed: _raisePurchaseOrder,
-                            ),
-                          )
-                        ],
+                        ),
+                      if (!canTransfer && !canPurchase)
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(20),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: const Color(0xFFCBD5E1)),
+                          ),
+                          child: Text(decision.reasoning,
+                              style: const TextStyle(color: Color(0xFF475569))),
+                        ),
+                      const SizedBox(height: 28),
+                      const Text('Compare Suppliers',
+                          style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF01604B))),
+                      const SizedBox(height: 4),
+                      const Text(
+                          'Choose a business priority to re-rank suppliers, or use the AI recommendation as-is. The Balanced view matches the recommendation above. The system never picks for you — every PO needs your confirmation.',
+                          style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      const SizedBox(height: 12),
+                      SupplierDecisionMatrix(
+                        productSku: widget.productSku,
+                        productName: widget.productName,
+                        defaultQuantity: unitsNeeded > 0 ? unitsNeeded : 100,
+                        destinationHub: decision.shortageHub,
+                        rankingFuture: _rankingFuture,
                       ),
-                    ),
-                ],
-              ),
+                    ],
+                  ),
+                );
+              },
             ),
     );
   }
+}
+
+class _SourcingData {
+  final Map<String, dynamic> product;
+  final DecisionResult decision;
+
+  _SourcingData({required this.product, required this.decision});
 }

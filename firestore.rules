@@ -1,0 +1,90 @@
+rules_version = '2';
+
+// Deploy with: firebase deploy --only firestore:rules
+//
+// This replaces the old client-side `_isManager` PIN toggle. Roles now live
+// as Firebase Auth custom claims (request.auth.token.role), set only by the
+// setUserRole Cloud Function, which only an 'owner' can call.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function role() {
+      return request.auth.token.role;
+    }
+
+    function hasAnyRole(roles) {
+      return isSignedIn() && role() in roles;
+    }
+
+    // --- Products: public fields (name, category, per-hub stock, threshold) ---
+    match /products/{sku} {
+      allow read: if hasAnyRole(['associate', 'manager', 'finance', 'owner']);
+
+      // No direct client writes. Stock only changes via the
+      // approveAndShipTransfer / confirmDelivery / adminUpsertProduct
+      // Cloud Functions, which run the change inside a transaction.
+      allow write: if false;
+
+      // --- Cost / supplier data: managers, finance, owner only ---
+      // Split out of the main doc because Firestore rules can't hide
+      // individual fields within one document read -- only whole documents.
+      match /restricted/{doc} {
+        allow read: if hasAnyRole(['manager', 'finance', 'owner']);
+        allow write: if false; // written only by the ingestion script (Admin SDK)
+      }
+
+      // --- Suppliers eligible to fulfill this product, with quoted terms ---
+      match /eligibleSuppliers/{supplierId} {
+        allow read: if hasAnyRole(['manager', 'finance', 'owner']);
+        allow write: if false; // written only by seed scripts / Admin SDK
+      }
+    }
+
+    // --- Supplier directory: cost-adjacent, managers/finance/owner only ---
+    match /suppliers/{supplierId} {
+      allow read: if hasAnyRole(['manager', 'finance', 'owner']);
+      allow write: if false; // written only by seed scripts / Admin SDK
+
+      // --- Historical Goods Receipt performance events ---
+      match /supplier_performance/{eventId} {
+        allow read: if hasAnyRole(['manager', 'finance', 'owner']);
+        allow write: if false; // written only by seed scripts / Admin SDK
+      }
+    }
+
+    // --- Purchase orders raised from the supplier decision matrix ---
+    match /purchase_orders/{poId} {
+      allow read: if hasAnyRole(['manager', 'finance', 'owner']);
+      allow write: if false; // written only by the raisePurchaseOrder Cloud Function
+    }
+
+    // --- Inter-hub transfers ---
+    match /transfers/{transferId} {
+      allow read: if hasAnyRole(['associate', 'manager', 'finance', 'owner']);
+
+      // Creating a transfer request is allowed client-side (it's just a
+      // proposal with status 'Pending'); approving/shipping/confirming it
+      // is not, because those steps move real stock and must be atomic.
+      allow create: if hasAnyRole(['manager', 'owner'])
+                    && request.resource.data.status == 'Pending';
+      allow update, delete: if false;
+    }
+
+    // --- Warehouse/hub topology (configurable, not hardcoded in code) ---
+    match /hubs/{hubId} {
+      allow read: if isSignedIn();
+      allow write: if hasAnyRole(['owner']);
+    }
+
+    // --- User role records (mirror of custom claims, for admin UI display) ---
+    match /users/{uid} {
+      allow read: if isSignedIn() && (request.auth.uid == uid || hasAnyRole(['owner']));
+      allow write: if false; // written only by the setUserRole Cloud Function
+    }
+  }
+}

@@ -1,0 +1,51 @@
+id,name,category,price,quantity,berlinStock,munichStock,hamburgStock,minStock,supplierId,supplierName,contactPerson,email,phone,address,leadTime
+PROD001,Netgear ProSafe,Electronics,838.75,1023,181,353,489,242,SUP001,OmniSupp,John Doe,j.doe@omnisupp.com,4.42079E+11,"London, United Kingdom",7
+PROD002,Apple Smart Watch,Electronics,365.54,1809,698,246,865,426,SUP001,OmniSupp,John Doe,j.doe@omnisupp.com,4.42079E+11,"London, United Kingdom",7
+PROD003,Philips Gaming Monitor,Electronics,149.19,689,100,258,331,202,SUP002,Alpha Tech,Markus Schmidt,m.schmidt@alphatech.de,49301234567,"Berlin, Germany",6
+PROD004,Philips Wireless Mouse,Electronics,119.96,842,367,123,352,213,SUP001,OmniSupp,John Doe,j.doe@omnisupp.com,4.42079E+11,"London, United Kingdom",7
+PROD005,Corsair X Mechanical Keyboard,Electronics,378.37,421,213,185,23,103,SUP001,OmniSupp,John Doe,j.doe@omnisupp.com,4.42079E+11,"London, United Kingdom",7
+PROD006,Logitech Wireless Keyboard,Electronics,136.52,2536,1286,64,1186,747,SUP002,Alpha Tech,Markus Schmidt,m.schmidt@alphatech.de,49301234567,"Berlin, Germany",6
+PROD007,Apple Lite iPad,Electronics,175.08,236,159,23,54,71,SUP002,Alpha Tech,Markus Schmidt,m.schmidt@alphatech.de,49301234567,"Berlin, Germany",6
+PROD008,Philips Ultra HD TV,Electronics,290.35,2871,1385,1028,458,752,SUP002,Alpha Tech,Markus Schmidt,m.schmidt@alphatech.de,49301234567,"Berlin, Germany",6
+PROD009,Netgear Essential Switch,Electronics,429.27,2388,311,938,1139,611,SUP001,OmniSupp,John Doe,j.doe@omnisupp.com,4.42079E+11,"London, United Kingdom",7
+PROD010,Levi's 501 Original Jeans,Fashion & Apparel,89.99,2283,1521,146,616,648,SUP003,Continent Trading,Clara Dupont,c.dupont@continent.fr,33142277890,"Paris, France",14
+PROD011,Nike Air Max Sneakers,Fashion & Apparel,145.5,537,292,98,147,131,SUP004,Global Tex,Stefan Weber,s.weber@globaltex.com,49405556677,"Hamburg, Germany",14
+PROD012,Ray-Ban Classic Aviator,Fashion & Apparel,150,2780,1074,380,1326,680,SUP003,Continent Trading,Clara Dupont,c.dupont@continent.fr,33142277890,"Paris, France",14
+PROD013,Zara Slim Fit Chinos,Fashion & Apparel,79.9,2975,1355,1160,460,652,SUP004,Global Tex,Stefan Weber,s.weber@globaltex.com,49405556677,"Hamburg, Germany",14
+PROD014,Adidas Original Hoodie,Fashion & Apparel,65,2811,650,1243,918,669,SUP003,Continent Trading,Clara Dupont,c.dupont@continent.fr,33142277890,"Paris, France",14
+PROD015,H&M Classic White Shirt,Fashion & Apparel,59.99,1365,722,598,45,330,SUP003,Continent Trading,Clara Dupont,c.dupont@continent.fr,33142277890,"Paris, France",14
+PROD016,Calvin Klein Cotton Boxer,Fashion & Apparel,29.95,2451,1172,542,737,631,SUP003,Continent Trading,Clara Dupont,c.dupont@continent.fr,33142277890,"Paris, France",14
+PROD017,Puma Essential Sweatpants,Fashion & Apparel,45,1303,198,557,548,394,SUP005,TrendLine,Laura Bianchi,l.bianchi@trendline.it,39021234567,"Milan, Italy",15
+PROD018,Tommy Hilfiger Polo,Fashion & Apparel,39.9,2287,989,378,920,518,SUP005,TrendLine,Laura Bianchi,l.bianchi@trendline.it,39021234567,"Milan, Italy",15
+PROD019,Uniqlo Ultra Light Jacket,Fashion & Apparel,79.9,1779,967,563,249,389,SUP003,Continent Trading,Clara Dupont,c.dupont@continent.fr,33142277890,"Paris, France",14
+PROD020,Dyson Airwrap Styler,Beauty & Health,549.99,1869,1146,78,645,480,SUP002,Alpha Tech,Markus Schmidt,m.schmidt@alphatech.de,49301234567,"Berlin, Germany",6
+PROD021,Estée Lauder Advanced Night,Beauty & Health,85.5,2043,744,751,548,409,SUP001,OmniSupp,John Doe,j.doe@omnisupp.com,4.42079E+11,"London, United Kingdom",7
+PROD022,Crème de la Mer Moisturizer,Beauty & Health,195,1851,808,598,445,370,SUP002,Alpha Tech,Markus Schmidt,m.schmidt@alphatech.de,49301234567,"Berlin, Germany",6
+PROD023,Chanel No 5 Parfum,Beauty & Health,135,1137,561,358,218,227,SUP001,OmniSupp,John Doe,j.doe@omnisupp.com,4.42079E+11,"London, United Kingdom",7
+PROD024,Olaplex No 3 Hair Perfector,Beauty & Health,30,2883,993,740,1150,577,SUP002,Alpha Tech,Markus Schmidt,m.schmidt@alphatech.de,49301234567,"Berlin, Germany",6
+PROD025,CeraVe Hydrating Cleanser,Beauty & Health,15.99,1836,817,465,554,367,SUP006,EuroElectrics,Elena Rostova,e.rostova@euroelectrics.ru,74951234567,"Moscow, Russia",7
+PROD026,The Ordinary Niacinamide,Beauty & Health,6.5,543,224,149,170,109,SUP001,OmniSupp,John Doe,j.doe@omnisupp.com,4.42079E+11,"London, United Kingdom",7
+PROD027,Kiehl's Ultra Facial Cream,Beauty & Health,38,2367,916,772,679,473,SUP006,EuroElectrics,Elena Rostova,e.rostova@euroelectrics.ru,74951234567,"Moscow, Russia",7
+PROD028,Laneige Lip Sleeping Mask,Beauty & Health,24,4434,1522,1292,1620,887,SUP001,OmniSupp,John Doe,j.doe@omnisupp.com,4.42079E+11,"London, United Kingdom",7
+PROD029,MAC Matte Lipstick,Beauty & Health,23,2217,903,745,569,443,SUP001,OmniSupp,John Doe,j.doe@omnisupp.com,4.42079E+11,"London, United Kingdom",7
+PROD030,Timberland Premium 6-Inch,Footwear,199.95,3905,1803,1272,830,781,SUP001,OmniSupp,John Doe,j.doe@omnisupp.com,4.42079E+11,"London, United Kingdom",7
+PROD031,Nike Air Force 1 '07,Footwear,119.99,4022,1698,1550,774,804,SUP004,Global Tex,Stefan Weber,s.weber@globaltex.com,49405556677,"Hamburg, Germany",14
+PROD032,Adidas Ultra Boost,Footwear,180,3447,1196,933,1318,689,SUP005,TrendLine,Laura Bianchi,l.bianchi@trendline.it,39021234567,"Milan, Italy",15
+PROD033,Birkenstock Arizona,Footwear,120,719,540,47,132,102,SUP002,Alpha Tech,Markus Schmidt,m.schmidt@alphatech.de,49301234567,"Berlin, Germany",6
+PROD034,Converse Chuck Taylor,Footwear,69.95,1703,794,569,340,401,SUP002,Alpha Tech,Markus Schmidt,m.schmidt@alphatech.de,49301234567,"Berlin, Germany",6
+PROD035,Dr. Martens 1460 Boot,Footwear,179.99,4390,1957,1459,974,878,SUP006,EuroElectrics,Elena Rostova,e.rostova@euroelectrics.ru,74951234567,"Moscow, Russia",7
+PROD036,Puma Cali Sneaker,Footwear,79.9,4458,1928,1470,1060,892,SUP003,Continent Trading,Clara Dupont,c.dupont@continent.fr,33142277890,"Paris, France",14
+PROD037,Vans Old Skool Classic,Footwear,74.95,4004,1629,1318,1057,801,SUP001,OmniSupp,John Doe,j.doe@omnisupp.com,4.42079E+11,"London, United Kingdom",7
+PROD038,New Balance 574,Footwear,89.99,1441,545,525,371,288,SUP001,OmniSupp,John Doe,j.doe@omnisupp.com,4.42079E+11,"London, United Kingdom",7
+PROD039,Crocs Classic Clog,Footwear,49.99,2442,1046,664,732,488,SUP001,OmniSupp,John Doe,j.doe@omnisupp.com,4.42079E+11,"London, United Kingdom",7
+PROD040,Michael Kors Handbag,Accessories,248,1391,660,481,250,278,SUP006,EuroElectrics,Elena Rostova,e.rostova@euroelectrics.ru,74951234567,"Moscow, Russia",7
+PROD041,Seiko Automatic Watch,Accessories,175.5,3381,1302,1121,958,676,SUP001,OmniSupp,John Doe,j.doe@omnisupp.com,4.42079E+11,"London, United Kingdom",7
+PROD042,Fjallraven Kanken Backpack,Accessories,85,2552,1152,840,560,510,SUP006,EuroElectrics,Elena Rostova,e.rostova@euroelectrics.ru,74951234567,"Moscow, Russia",7
+PROD043,Gucci Silk Scarf,Accessories,395,2907,1262,962,683,581,SUP006,EuroElectrics,Elena Rostova,e.rostova@euroelectrics.ru,74951234567,"Moscow, Russia",7
+PROD044,Ridge Slim Wallet,Accessories,95,3442,1561,958,923,688,SUP002,Alpha Tech,Markus Schmidt,m.schmidt@alphatech.de,49301234567,"Berlin, Germany",6
+PROD045,Carhartt Acrylic Hat,Accessories,24.99,1619,628,559,432,324,SUP002,Alpha Tech,Markus Schmidt,m.schmidt@alphatech.de,49301234567,"Berlin, Germany",6
+PROD046,Herschel Supply Backpack,Accessories,89.99,3038,1235,1014,789,608,SUP002,Alpha Tech,Markus Schmidt,m.schmidt@alphatech.de,49301234567,"Berlin, Germany",6
+PROD047,Oakley Holbrook Sunglasses,Accessories,142,2055,850,817,388,411,SUP001,OmniSupp,John Doe,j.doe@omnisupp.com,4.42079E+11,"London, United Kingdom",7
+PROD048,Fossil Logan Leather Wallet,Accessories,74.95,1508,557,433,518,302,SUP006,EuroElectrics,Elena Rostova,e.rostova@euroelectrics.ru,74951234567,"Moscow, Russia",7
+PROD049,Casio Classic Digital Watch,Accessories,25,1900,800,650,450,380,SUP006,EuroElectrics,Elena Rostova,e.rostova@euroelectrics.ru,74951234567,"Moscow, Russia",7
+PROD050,WareWise Generic SME Item,Accessories,49.95,1550,500,450,600,200,SUP001,OmniSupp,John Doe,j.doe@omnisupp.com,4.42079E+11,"London, United Kingdom",7

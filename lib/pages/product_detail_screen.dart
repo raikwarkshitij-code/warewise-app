@@ -1,7 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../services/firestore.dart';
+import 'package:provider/provider.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/city_stock_chart_view.dart';
+import '../services/lane_metrics.dart';
+import '../services/role_service.dart';
 
 class ProductDetailScreen extends StatefulWidget {
   final Map<String, dynamic> product;
@@ -16,22 +20,16 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   bool _isSuccess =
       false; // Internal state flag to manage immediate onscreen feedback
 
-  double _getTransferCost(String from, String to) {
-    final lane = '${from}_$to';
-    if (lane.contains('Berlin') && lane.contains('Hamburg')) return 145.50;
-    if (lane.contains('Berlin') && lane.contains('Munich')) return 292.50;
-    if (lane.contains('Hamburg') && lane.contains('Munich')) return 396.00;
-    return 200.00;
-  }
-
   @override
   Widget build(BuildContext context) {
+    final canRequestTransfer =
+        context.watch<RoleService>().hasAnyRole(['manager', 'owner']);
     final productName = widget.product['name']?.toString() ?? 'Unknown Product';
-    final String productId = widget.product['id']?.toString() ?? 'unknown_id';
+    final String productId = widget.product['sku']?.toString() ?? 'unknown_id';
     final int qty =
         int.tryParse(widget.product['quantity']?.toString() ?? '0') ?? 0;
     final int minStock =
-        int.tryParse(widget.product['minStockLevel']?.toString() ?? '0') ?? 0;
+        int.tryParse(widget.product['threshold']?.toString() ?? '0') ?? 0;
 
     final double retailPrice =
         double.tryParse(widget.product['price']?.toString() ?? '0.0') ?? 0.0;
@@ -58,7 +56,8 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
     String surplusHub = hubs.last.key;
 
     final double procurementCost = unitCogs * 100;
-    final double transferCost = _getTransferCost(surplusHub, depletedHub);
+    final double transferCost =
+        LaneMetricsService.forRoute(surplusHub, depletedHub).costPerUnit * 100;
     final double netSavings = procurementCost - transferCost;
 
     return Scaffold(
@@ -85,14 +84,14 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                           icon: Icons.inventory_2,
                           label: 'Global Stock',
                           value: '$qty',
-                          color: Colors.blue)),
+                          flagColor: Colors.blue)),
                   const SizedBox(width: 12),
                   Expanded(
                       child: StatCard(
                           icon: Icons.warning_amber,
                           label: 'Min Threshold',
                           value: '$minStock',
-                          color: qty <= minStock
+                          flagColor: qty <= minStock
                               ? Colors.red
                               : Colors.grey.shade700)),
                 ],
@@ -155,20 +154,18 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12)),
                   ),
-                  onPressed: _isSuccess
+                  onPressed: (_isSuccess || !canRequestTransfer)
                       ? null
                       : () async {
                           try {
                             // Dispatches data straight to Firestore tracking collection
-                            FirebaseFirestore.instance
-                                .collection('transfers')
-                                .add({
+                            db.collection('transfers').add({
                               'productId': productId,
                               'productName': productName,
                               'from': surplusHub,
                               'to': depletedHub,
                               'volume': 100,
-                              'status': 'Pending Approval',
+                              'status': 'Pending',
                               'procurementCost': procurementCost,
                               'transferCost': transferCost,
                               'netSavings': netSavings,
@@ -198,7 +195,9 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
                   label: Text(
                       _isSuccess
                           ? 'Transfer Request Dispatched'
-                          : 'Request Transfer',
+                          : (canRequestTransfer
+                              ? 'Request Transfer'
+                              : 'Only Managers Can Request Transfers'),
                       style: const TextStyle(
                           fontSize: 15, fontWeight: FontWeight.bold)),
                 ),

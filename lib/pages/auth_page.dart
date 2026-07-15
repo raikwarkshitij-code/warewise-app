@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../widgets/brand_logo.dart';
 
 class AuthPage extends StatefulWidget {
   const AuthPage({super.key});
@@ -17,7 +18,7 @@ class _AuthPageState extends State<AuthPage> {
 
   bool isLogin = true;
   bool isGerman = false; // Controls localization strings globally across layout
-  
+
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   String? errorMessage;
@@ -33,8 +34,8 @@ class _AuthPageState extends State<AuthPage> {
   Future<void> submit() async {
     if (emailController.text.trim().isEmpty ||
         passwordController.text.trim().isEmpty) {
-      setState(() => errorMessage = isGerman 
-          ? 'Bitte füllen Sie alle Anmeldefelder aus.' 
+      setState(() => errorMessage = isGerman
+          ? 'Bitte füllen Sie alle Anmeldefelder aus.'
           : 'Please fill out all credential fields.');
       return;
     }
@@ -72,7 +73,8 @@ class _AuthPageState extends State<AuthPage> {
         child: Center(
           child: SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+            padding:
+                const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
             child: Container(
               constraints: const BoxConstraints(maxWidth: 400),
               child: Column(
@@ -95,11 +97,7 @@ class _AuthPageState extends State<AuthPage> {
                           )
                         ],
                       ),
-                      child: const Icon(
-                        Icons.inventory_2_rounded, // Smart vector asset block frame placeholder
-                        color: Colors.white,
-                        size: 40,
-                      ),
+                      child: const BrandLogo(size: 48),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -107,16 +105,19 @@ class _AuthPageState extends State<AuthPage> {
                   Center(
                     child: Text(
                       'WareWise',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: emeraldDarkForest,
-                      ),
+                      style:
+                          Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                fontSize: 32,
+                                fontWeight: FontWeight.bold,
+                                color: emeraldDarkForest,
+                              ),
                     ),
                   ),
                   Center(
                     child: Text(
-                      isGerman ? 'Intelligente Bestandsverwaltung' : 'Smarter Inventory, Simpler Operations',
+                      isGerman
+                          ? 'Intelligente Bestandsverwaltung'
+                          : 'Smarter Inventory, Simpler Operations',
                       style: const TextStyle(
                         fontSize: 13,
                         color: Colors.grey,
@@ -128,7 +129,8 @@ class _AuthPageState extends State<AuthPage> {
 
                   // --- MULTILINGUAL TOGGLE RAIL ---
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                     decoration: BoxDecoration(
                       color: const Color(0xFFE2E8F0),
                       borderRadius: BorderRadius.circular(30),
@@ -138,7 +140,9 @@ class _AuthPageState extends State<AuthPage> {
                       children: [
                         Text(
                           isGerman ? '🇩🇪 Deutsch' : '🇬🇧 English',
-                          style: const TextStyle(fontWeight: FontWeight.bold, color: emeraldDarkForest),
+                          style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: emeraldDarkForest),
                         ),
                         Switch(
                           value: isGerman,
@@ -177,10 +181,11 @@ class _AuthPageState extends State<AuthPage> {
                             ),
                           ),
                           Text(
-                            isGerman 
-                                ? 'Anmelden, um das Lager zu verwalten' 
+                            isGerman
+                                ? 'Anmelden, um das Lager zu verwalten'
                                 : 'Sign in to manage your warehouse',
-                            style: const TextStyle(fontSize: 13, color: Colors.grey),
+                            style: const TextStyle(
+                                fontSize: 13, color: Colors.grey),
                           ),
                           const SizedBox(height: 24),
 
@@ -191,16 +196,19 @@ class _AuthPageState extends State<AuthPage> {
                             textInputAction: TextInputAction.next,
                             decoration: InputDecoration(
                               labelText: isGerman ? 'E-Mail' : 'Email',
-                              labelStyle: const TextStyle(color: Colors.black54, fontSize: 14),
+                              labelStyle: const TextStyle(
+                                  color: Colors.black54, fontSize: 14),
                               filled: true,
                               fillColor: const Color(0xFFF8FAFC),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: emeraldPastel),
+                                borderSide:
+                                    const BorderSide(color: emeraldPastel),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: emeraldCore, width: 2),
+                                borderSide: const BorderSide(
+                                    color: emeraldCore, width: 2),
                               ),
                               contentPadding: const EdgeInsets.all(16),
                             ),
@@ -215,16 +223,19 @@ class _AuthPageState extends State<AuthPage> {
                             onSubmitted: (_) => submit(),
                             decoration: InputDecoration(
                               labelText: isGerman ? 'Passwort' : 'Password',
-                              labelStyle: const TextStyle(color: Colors.black54, fontSize: 14),
+                              labelStyle: const TextStyle(
+                                  color: Colors.black54, fontSize: 14),
                               filled: true,
                               fillColor: const Color(0xFFF8FAFC),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: emeraldPastel),
+                                borderSide:
+                                    const BorderSide(color: emeraldPastel),
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide: const BorderSide(color: emeraldCore, width: 2),
+                                borderSide: const BorderSide(
+                                    color: emeraldCore, width: 2),
                               ),
                               contentPadding: const EdgeInsets.all(16),
                             ),
@@ -271,9 +282,11 @@ class _AuthPageState extends State<AuthPage> {
                                       ),
                                     )
                                   : Text(
-                                      isLogin 
-                                          ? (isGerman ? 'Einloggen' : 'Sign In') 
-                                          : (isGerman ? 'Registrieren' : 'Register'),
+                                      isLogin
+                                          ? (isGerman ? 'Einloggen' : 'Sign In')
+                                          : (isGerman
+                                              ? 'Registrieren'
+                                              : 'Register'),
                                       style: const TextStyle(
                                         fontSize: 15,
                                         fontWeight: FontWeight.bold,
@@ -291,7 +304,8 @@ class _AuthPageState extends State<AuthPage> {
                   // --- SUB VIEW DISPATCH INTERCHANGE LINK (ACCOUNT TOGGLE) ---
                   Center(
                     child: TextButton(
-                      style: TextButton.styleFrom(foregroundColor: emeraldDarkForest),
+                      style: TextButton.styleFrom(
+                          foregroundColor: emeraldDarkForest),
                       onPressed: () {
                         setState(() {
                           isLogin = !isLogin;
@@ -300,9 +314,14 @@ class _AuthPageState extends State<AuthPage> {
                       },
                       child: Text(
                         isLogin
-                            ? (isGerman ? "Noch kein Konto? Registrieren" : "Don't have an account? Register")
-                            : (isGerman ? "Bereits registriert? Einloggen" : "Already have an account? Sign In"),
-                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                            ? (isGerman
+                                ? "Noch kein Konto? Registrieren"
+                                : "Don't have an account? Register")
+                            : (isGerman
+                                ? "Bereits registriert? Einloggen"
+                                : "Already have an account? Sign In"),
+                        style: const TextStyle(
+                            fontSize: 14, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ),

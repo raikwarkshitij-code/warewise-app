@@ -4,7 +4,8 @@ class StatCard extends StatelessWidget {
   final IconData icon;
   final String label;
   final String value;
-  final Color flagColor; // Represents your color code rule: Green = Good, Orange = Warning
+  final Color
+      flagColor; // Represents your color code rule: Green = Good, Orange = Warning
 
   const StatCard({
     super.key,
@@ -50,8 +51,8 @@ class StatCard extends StatelessWidget {
               Text(
                 value,
                 style: const TextStyle(
-                  fontSize: 20, 
-                  fontWeight: FontWeight.w900, 
+                  fontSize: 20,
+                  fontWeight: FontWeight.w900,
                   color: Color(0xFF1F2937),
                 ),
               ),
@@ -59,8 +60,8 @@ class StatCard extends StatelessWidget {
               Text(
                 label,
                 style: const TextStyle(
-                  fontSize: 12, 
-                  color: Colors.grey, 
+                  fontSize: 12,
+                  color: Colors.grey,
                   fontWeight: FontWeight.w500,
                 ),
               ),
