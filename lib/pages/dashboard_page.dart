@@ -172,29 +172,44 @@ class DashboardPage extends StatelessWidget {
             ),
           ),
         ),
-        titlePadding: const EdgeInsets.only(left: 20, bottom: 20),
+        // right: 56 reserves room for the profile icon overlay that
+        // main_shell.dart pins to the top-right corner (36px circle + 16px
+        // offset + a little breathing room) so long title text can never
+        // render underneath/behind it.
+        titlePadding: const EdgeInsets.only(left: 20, right: 56, bottom: 20),
         title: Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
             const BrandLogo(size: 28),
             const SizedBox(width: 10),
-            const Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Welcome to WareWise',
-                    style: TextStyle(
-                        fontSize: 12,
-                        color: Colors.white60,
-                        fontWeight: FontWeight.w400)),
-                SizedBox(height: 2),
-                Text('Smarter Inventory Control Hub',
-                    style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                        letterSpacing: -0.5)),
-              ],
+            // Expanded (not MainAxisSize.min) — on narrow Android widths
+            // "Smarter Inventory Control Hub" at 18px bold does not fit
+            // next to the logo without this, which throws a RenderFlex
+            // overflow. Expanded caps the Column's width to whatever the
+            // SliverAppBar title slot actually has left, and the ellipsis
+            // below is the graceful fallback if it's still tight.
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Welcome to WareWise',
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white60,
+                          fontWeight: FontWeight.w400)),
+                  const SizedBox(height: 2),
+                  const Text('Smarter Inventory Control Hub',
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: -0.5)),
+                ],
+              ),
             ),
           ],
         ),
